@@ -27,7 +27,6 @@
   }
   .screen.active { display: flex; }
 
-  /* ===== Стартовый экран ===== */
   #screen-start {
     justify-content: center;
     align-items: center;
@@ -62,7 +61,6 @@
   }
   .btn-demo:active { transform: scale(0.97); }
 
-  /* ===== Экран демо-кодов ===== */
   #screen-demo {
     background: #0f172a;
     padding: 24px;
@@ -111,7 +109,6 @@
     width: 100%;
   }
 
-  /* ===== Экран сканирования ===== */
   #screen-scan { background: #000; }
   .scan-header {
     padding: 16px 20px;
@@ -150,7 +147,7 @@
     position: relative;
   }
   .scan-frame::before {
-    content: "Наведите камеру на DataMatrix";
+    content: "Наведите камеру на марку";
     position: absolute;
     bottom: -40px;
     left: 50%;
@@ -183,7 +180,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ===== Экран результата ===== */
   #screen-result {
     justify-content: center;
     align-items: center;
@@ -208,17 +204,34 @@
   }
   .result-subtitle {
     font-size: 20px;
-    margin-bottom: 48px;
+    margin-bottom: 24px;
     opacity: 0.95;
     line-height: 1.3;
   }
   .result-code {
     font-size: 12px;
     opacity: 0.7;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     word-break: break-all;
     max-width: 100%;
     font-family: monospace;
+    padding: 0 12px;
+  }
+  .btn-copy {
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 24px;
+  }
+  .btn-copy:active { transform: scale(0.97); }
+  .btn-copy.copied {
+    background: rgba(255,255,255,0.3);
+    border-color: #fff;
   }
   .btn-action {
     background: rgba(255,255,255,0.95);
@@ -234,7 +247,6 @@
   }
   .btn-action:active { transform: scale(0.97); }
 
-  /* ===== Мок-экран списания ===== */
   #screen-writeoff {
     background: #2a0a0a;
     justify-content: center;
@@ -280,7 +292,6 @@
 </head>
 <body>
 
-<!-- Экран 1: Старт -->
 <div id="screen-start" class="screen active">
   <h1>Проверка марок</h1>
   <p>Сканирование DataMatrix<br>Честный Знак</p>
@@ -288,14 +299,12 @@
   <button class="btn-demo" id="btn-demo">Показать тестовые коды</button>
 </div>
 
-<!-- Экран 2: Демо-коды -->
 <div id="screen-demo" class="screen">
   <div class="demo-header">Тестовые коды</div>
   <div class="demo-list" id="demo-list"></div>
   <button class="btn-back" id="btn-demo-back">Назад</button>
 </div>
 
-<!-- Экран 3: Сканирование -->
 <div id="screen-scan" class="screen">
   <div class="scan-header">Наведите камеру на марку</div>
   <div id="reader">
@@ -309,16 +318,15 @@
   </div>
 </div>
 
-<!-- Экран 4: Результат -->
 <div id="screen-result" class="screen">
   <div class="result-icon" id="result-icon"></div>
   <div class="result-title" id="result-title"></div>
   <div class="result-subtitle" id="result-subtitle"></div>
   <div class="result-code" id="result-code"></div>
+  <button class="btn-copy" id="btn-copy"> Скопировать код</button>
   <button class="btn-action" id="btn-action"></button>
 </div>
 
-<!-- Экран 5: Списание (мок) -->
 <div id="screen-writeoff" class="screen">
   <h2>⚠️ Списание товара</h2>
   <p>Подтвердите списание просроченного товара в системе</p>
@@ -331,183 +339,109 @@
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 // ============================================================
-// ДАННЫЕ МАРКОК (6 тестовых кодов из таблицы)
-// Заменены ? на 0 для валидности DataMatrix
+// ДАННЫЕ МАРКОК — ПОКА ПУСТО, ЖДЁМ ТОЧНЫЕ СТРОКИ ОТ ЗАКАЗЧИКА
 // ============================================================
 const MARKS = {
-  "010460700023452121nYv7H0000000000": { status: "available" },
-  "010460700023452121nYv7H0000000001": { status: "expired" },
-  "010460700023452121nYv7H0000000002": { status: "written_off" },
-  "010460700023452121nYv7H0000000003": { status: "sold" },
-  "010460700023452121nYv7H0000000004": { status: "not_ours" },
-  "010460700023452121nYv7H0000000005": { status: "no_connection" },
+  // Сюда вставим 6 кодов после того, как заказчик пришлёт точные строки
 };
 
-// ============================================================
-// КОНФИГУРАЦИЯ СТАТУСОВ
-// ============================================================
 const STATUS_CONFIG = {
   available: {
-    bg: '#16a34a',
-    icon: '✅',
-    title: 'Доступно',
-    subtitle: 'Выставьте в зал',
-    action: 'ОК',
-    voice: 'Товар доступен к продаже. Выставьте в зал',
-    next: 'scan'
+    bg: '#16a34a', icon: '✅', title: 'Доступно', subtitle: 'Выставьте в зал',
+    action: 'ОК', voice: 'Товар доступен к продаже. Выставьте в зал', next: 'scan'
   },
   expired: {
-    bg: '#dc2626',
-    icon: '⛔',
-    title: 'Просрочено',
-    subtitle: 'Проведите списание',
-    action: 'Списать',
-    voice: 'Товар просрочен. Проведите списание',
-    next: 'writeoff'
+    bg: '#dc2626', icon: '⛔', title: 'Просрочено', subtitle: 'Проведите списание',
+    action: 'Списать', voice: 'Товар просрочен. Проведите списание', next: 'writeoff'
   },
   written_off: {
-    bg: '#dc2626',
-    icon: '🚫',
-    title: 'Списано ранее',
-    subtitle: 'Утилизируйте товар',
-    action: 'Утилизировать',
-    voice: 'Марка списана ранее. Утилизируйте товар',
-    next: 'scan'
+    bg: '#dc2626', icon: '', title: 'Списано ранее', subtitle: 'Утилизируйте товар',
+    action: 'Утилизировать', voice: 'Марка списана ранее. Утилизируйте товар', next: 'scan'
   },
   sold: {
-    bg: '#dc2626',
-    icon: '🚫',
-    title: 'Продано ранее',
-    subtitle: 'Утилизируйте товар',
-    action: 'Утилизировать',
-    voice: 'Марка продана ранее. Утилизируйте товар',
-    next: 'scan'
+    bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар',
+    action: 'Утилизировать', voice: 'Марка продана ранее. Утилизируйте товар', next: 'scan'
   },
   not_ours: {
-    bg: '#dc2626',
-    icon: '❌',
-    title: 'Не наша марка',
-    subtitle: 'Утилизируйте товар',
-    action: 'Утилизировать',
-    voice: 'Марка не принадлежит компании. Утилизируйте товар',
-    next: 'scan'
+    bg: '#dc2626', icon: '❌', title: 'Не наша марка', subtitle: 'Утилизируйте товар',
+    action: 'Утилизировать', voice: 'Марка не принадлежит компании. Утилизируйте товар', next: 'scan'
   },
   no_connection: {
-    bg: '#f59e0b',
-    icon: '',
-    title: 'Нет связи',
-    subtitle: 'Повторите попытку позднее',
-    action: 'Повторить',
-    voice: 'Нет связи с сервером. Повторите попытку позднее',
-    next: 'reload'
+    bg: '#f59e0b', icon: '📡', title: 'Нет связи', subtitle: 'Повторите попытку позднее',
+    action: 'Повторить', voice: 'Нет связи с сервером. Повторите попытку позднее', next: 'reload'
   },
   unknown: {
-    bg: '#6b7280',
-    icon: '❓',
-    title: 'Марка не найдена',
-    subtitle: 'Код отсутствует в базе',
-    action: 'ОК',
-    voice: 'Марка не найдена в базе данных',
-    next: 'scan'
+    bg: '#6b7280', icon: '', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе',
+    action: 'ОК', voice: 'Марка не найдена в базе данных', next: 'scan'
   }
 };
 
-// ============================================================
-// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
-// ============================================================
+// Порядок статусов для автоматического назначения (пока база пустая)
+const STATUS_ORDER = ['available', 'expired', 'written_off', 'sold', 'not_ours', 'no_connection'];
+let scannedUnknownCodes = [];
+
 let html5QrCode = null;
 let isScanning = false;
 let lastScannedCode = null;
 let lastScanTime = 0;
 const COOLDOWN_MS = 2500;
+let currentResultCode = '';
 
-// ============================================================
-// НАВИГАЦИЯ
-// ============================================================
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-// ============================================================
-// ПОКАЗ ДЕМO-КОДОВ
-// ============================================================
 function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
-  
   const statusLabels = {
-    available: ' Доступно',
-    expired: ' Просрочено',
-    written_off: '🔴 Списано ранее',
-    sold: '🔴 Продано ранее',
-    not_ours: '🔴 Не наша марка',
-    no_connection: '🟡 Нет связи'
+    available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее',
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи'
   };
-  
+  if (Object.keys(MARKS).length === 0) {
+    list.innerHTML = '<div style="text-align:center;opacity:0.7;padding:20px">База пуста. Отсканируйте QR-коды и пришлите координатору.</div>';
+  }
   for (const [code, data] of Object.entries(MARKS)) {
     const item = document.createElement('div');
     item.className = 'demo-item';
-    item.innerHTML = `
-      <div class="demo-status">${statusLabels[data.status]}</div>
-      <div class="demo-code">${code}</div>
-    `;
+    item.innerHTML = `<div class="demo-status">${statusLabels[data.status] || data.status}</div><div class="demo-code">${code}</div>`;
     item.onclick = () => {
-      // Копирование кода в буфер
       navigator.clipboard.writeText(code).then(() => {
-        const original = item.querySelector('.demo-status').textContent;
-        item.querySelector('.demo-status').textContent = '✓ Скопировано';
-        setTimeout(() => {
-          item.querySelector('.demo-status').textContent = original;
-        }, 1000);
+        const el = item.querySelector('.demo-status');
+        const orig = el.textContent;
+        el.textContent = '✓ Скопировано';
+        setTimeout(() => el.textContent = orig, 1000);
       });
     };
     list.appendChild(item);
   }
-  
   showScreen('screen-demo');
 }
 
-// ============================================================
-// ПОИСК СТАТУСА МАРКИ
-// ============================================================
 function lookupStatus(code) {
-  const normalized = code.trim().toUpperCase();
+  const normalized = code.trim();
   for (const key of Object.keys(MARKS)) {
-    if (key.toUpperCase() === normalized) {
-      return MARKS[key].status;
-    }
+    if (key === normalized) return MARKS[key].status;
   }
   return 'unknown';
 }
 
-// ============================================================
-// ГОЛОСОВОЕ СОПРОВОЖДЕНИЕ
-// ============================================================
 function speak(text) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'ru-RU';
-  utterance.rate = 1.05;
-  utterance.pitch = 1;
-  utterance.volume = 1;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ru-RU'; u.rate = 1.05; u.volume = 1;
   const voices = window.speechSynthesis.getVoices();
-  const ruVoice = voices.find(v => v.lang.startsWith('ru'));
-  if (ruVoice) utterance.voice = ruVoice;
-  window.speechSynthesis.speak(utterance);
+  const ru = voices.find(v => v.lang.startsWith('ru'));
+  if (ru) u.voice = ru;
+  window.speechSynthesis.speak(u);
 }
 
-// ============================================================
-// ВИБРАЦИЯ
-// ============================================================
 function vibrate(pattern) {
   if ('vibrate' in navigator) navigator.vibrate(pattern);
 }
 
-// ============================================================
-// ЗАПУСК СКАНЕРА
-// ============================================================
 async function startScanner() {
   if (isScanning) return;
   showScreen('screen-scan');
@@ -516,27 +450,23 @@ async function startScanner() {
   loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
 
   try {
-    if (!html5QrCode) {
-      html5QrCode = new Html5Qrcode("reader", { verbose: false });
-    }
-
-    const config = {
-      fps: 15,
-      qrbox: (vw, vh) => {
-        const size = Math.floor(Math.min(vw, vh) * 0.72);
-        return { width: size, height: size };
-      },
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.DATA_MATRIX,
-        Html5QrcodeSupportedFormats.QR_CODE
-      ],
-      aspectRatio: 1.0,
-      experimentalFeatures: { useBarCodeDetectorIfAvailable: true }
-    };
+    if (!html5QrCode) html5QrCode = new Html5Qrcode("reader", { verbose: false });
 
     await html5QrCode.start(
       { facingMode: "environment" },
-      config,
+      {
+        fps: 15,
+        qrbox: (vw, vh) => {
+          const size = Math.floor(Math.min(vw, vh) * 0.72);
+          return { width: size, height: size };
+        },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.DATA_MATRIX,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ],
+        aspectRatio: 1.0,
+        experimentalFeatures: { useBarCodeDetectorIfAvailable: true }
+      },
       onScanSuccess,
       () => {}
     );
@@ -545,8 +475,7 @@ async function startScanner() {
     loader.classList.add('hidden');
   } catch (err) {
     console.error('Ошибка запуска камеры:', err);
-    loader.innerHTML = '<span style="color:#f87171;text-align:center;padding:20px">' +
-      'Не удалось запустить камеру<br><small>' + err.message + '</small></span>';
+    loader.innerHTML = '<span style="color:#f87171;text-align:center;padding:20px">Не удалось запустить камеру<br><small>' + err.message + '</small></span>';
   }
 }
 
@@ -556,9 +485,6 @@ async function stopScanner() {
   isScanning = false;
 }
 
-// ============================================================
-// УСПЕШНОЕ СКАНИРОВАНИЕ
-// ============================================================
 async function onScanSuccess(decodedText) {
   const now = Date.now();
   if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
@@ -568,22 +494,46 @@ async function onScanSuccess(decodedText) {
   vibrate([80, 50, 80]);
   await stopScanner();
 
-  const statusKey = lookupStatus(decodedText);
-  const config = STATUS_CONFIG[statusKey];
+  let statusKey = lookupStatus(decodedText);
+  
+  // Если код неизвестен — запоминаем его порядок сканирования
+  if (statusKey === 'unknown') {
+    if (!scannedUnknownCodes.includes(decodedText)) {
+      scannedUnknownCodes.push(decodedText);
+    }
+    const orderIndex = scannedUnknownCodes.indexOf(decodedText);
+    if (orderIndex < STATUS_ORDER.length) {
+      // Временно показываем, какой статус будет присвоен
+      console.log(`Код "${decodedText}" будет статусом: ${STATUS_ORDER[orderIndex]}`);
+    }
+  }
 
+  const config = STATUS_CONFIG[statusKey];
+  currentResultCode = decodedText;
   showResult(config, decodedText);
   speak(config.voice);
 }
 
-// ============================================================
-// ПОКАЗ РЕЗУЛЬТАТА
-// ============================================================
 function showResult(config, code) {
   document.getElementById('screen-result').style.background = config.bg;
   document.getElementById('result-icon').textContent = config.icon;
   document.getElementById('result-title').textContent = config.title;
   document.getElementById('result-subtitle').textContent = config.subtitle;
-  document.getElementById('result-code').textContent = code.length > 50 ? code.slice(0, 50) + '…' : code;
+  document.getElementById('result-code').textContent = code;
+  
+  const copyBtn = document.getElementById('btn-copy');
+  copyBtn.textContent = '📋 Скопировать код';
+  copyBtn.classList.remove('copied');
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      copyBtn.textContent = '✓ Скопировано';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = '📋 Скопировать код';
+        copyBtn.classList.remove('copied');
+      }, 1500);
+    });
+  };
 
   const btn = document.getElementById('btn-action');
   btn.textContent = config.action;
@@ -592,41 +542,25 @@ function showResult(config, code) {
   showScreen('screen-result');
 }
 
-// ============================================================
-// ДЕЙСТВИЕ ПОСЛЕ РЕЗУЛЬТАТА
-// ============================================================
 function handleAction(config) {
-  if (config.next === 'writeoff') {
-    showScreen('screen-writeoff');
-  } else if (config.next === 'reload') {
-    window.location.reload();
-  } else {
-    setTimeout(() => startScanner(), 300);
-  }
+  if (config.next === 'writeoff') showScreen('screen-writeoff');
+  else if (config.next === 'reload') window.location.reload();
+  else setTimeout(() => startScanner(), 300);
 }
 
-// ============================================================
-// КНОПКИ СПИСАНИЯ (МОК)
-// ============================================================
 document.getElementById('btn-writeoff-confirm').onclick = () => {
   vibrate([100, 50, 100, 50, 200]);
   speak('Списание подтверждено');
   setTimeout(() => startScanner(), 800);
 };
+document.getElementById('btn-writeoff-cancel').onclick = () => startScanner();
 
-document.getElementById('btn-writeoff-cancel').onclick = () => {
-  startScanner();
-};
-
-// ============================================================
-// СТАРТ
-// ============================================================
 document.getElementById('btn-start').onclick = () => {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.getVoices();
-    const warmup = new SpeechSynthesisUtterance('');
-    warmup.volume = 0;
-    window.speechSynthesis.speak(warmup);
+    const w = new SpeechSynthesisUtterance('');
+    w.volume = 0;
+    window.speechSynthesis.speak(w);
   }
   startScanner();
 };
