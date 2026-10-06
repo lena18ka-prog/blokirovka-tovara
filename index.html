@@ -19,7 +19,6 @@
     -webkit-user-select: none;
   }
   
-  /* ===== СТАРТОВЫЙ ЭКРАН ===== */
   #screen-start {
     position: absolute;
     inset: 0;
@@ -103,7 +102,6 @@
   .pending-time { font-size: 11px; opacity: 0.7; }
   .pending-empty { text-align: center; padding: 40px 20px; opacity: 0.5; font-size: 14px; }
 
-  /* ===== ЭКРАН СКАНИРОВАНИЯ (камера всегда активна) ===== */
   #screen-scan {
     position: absolute;
     inset: 0;
@@ -185,7 +183,6 @@
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
   }
 
-  /* ===== ОВЕРЛЕИ РЕЗУЛЬТАТА (поверх камеры) ===== */
   .overlay {
     position: absolute;
     inset: 0;
@@ -195,7 +192,7 @@
     align-items: center;
     padding: 24px 20px;
     text-align: center;
-    z-index: 20;
+    z-index: 50;
     animation: fadeIn 0.2s ease-out;
   }
   .overlay.active { display: flex; }
@@ -272,7 +269,6 @@
   }
   .btn-action:active { transform: scale(0.97); }
 
-  /* ===== ОВЕРЛЕЙ СПИСАНИЯ ===== */
   .overlay-writeoff {
     background: rgba(42, 10, 10, 0.97);
   }
@@ -306,7 +302,6 @@
     cursor: pointer;
   }
 
-  /* ===== ОВЕРЛЕЙ УВЕДОМЛЕНИЯ ===== */
   .overlay-notification {
     background: rgba(0,0,0,0.95);
     justify-content: flex-start;
@@ -345,7 +340,6 @@
     width: calc(100% - 40px);
   }
 
-  /* ===== ДЕМО ЭКРАН ===== */
   #screen-demo {
     position: absolute;
     inset: 0;
@@ -380,7 +374,6 @@
     width: 100%;
   }
 
-  /* ===== ТОСТ ===== */
   .toast {
     position: fixed;
     top: 20px;
@@ -400,11 +393,29 @@
     from { transform: translate(-50%, -100%); }
     to { transform: translate(-50%, 0); }
   }
+
+  /* Отладочная панель */
+  .debug-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.9);
+    color: #0f0;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 4000;
+    display: none;
+  }
+  .debug-panel.active { display: block; }
+  .debug-line { margin: 2px 0; }
 </style>
 </head>
 <body>
 
-<!-- ===== СТАРТОВЫЙ ЭКРАН ===== -->
 <div id="screen-start">
   <div class="start-header">
     <h1>Проверка марок</h1>
@@ -422,7 +433,6 @@
   </div>
 </div>
 
-<!-- ===== ЭКРАН СКАНИРОВАНИЯ С КАМЕРОЙ ===== -->
 <div id="screen-scan">
   <div class="scan-header">
     <button class="btn-scan-back" id="btn-scan-back">← К списку</button>
@@ -435,7 +445,6 @@
     </div>
   </div>
 
-  <!-- Оверлей результата -->
   <div class="overlay" id="overlay-result">
     <div class="overlay-icon" id="ov-icon"></div>
     <div class="overlay-title" id="ov-title"></div>
@@ -447,9 +456,8 @@
     <button class="btn-action" id="btn-action"></button>
   </div>
 
-  <!-- Оверлей списания -->
   <div class="overlay overlay-writeoff" id="overlay-writeoff">
-    <h2>⚠️ Списание товара</h2>
+    <h2>️ Списание товара</h2>
     <p>Подтвердите списание просроченного товара</p>
     <div class="writeoff-buttons">
       <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
@@ -457,7 +465,6 @@
     </div>
   </div>
 
-  <!-- Оверлей уведомления -->
   <div class="overlay overlay-notification" id="overlay-notification">
     <div class="notification-banner">
       <div class="notification-icon">🔔</div>
@@ -471,12 +478,13 @@
   </div>
 </div>
 
-<!-- ===== ДЕМО ЭКРАН ===== -->
 <div id="screen-demo">
   <div class="demo-header">Тестовые коды</div>
   <div class="demo-list" id="demo-list"></div>
   <button class="btn-back" id="btn-demo-back">Назад</button>
 </div>
+
+<div class="debug-panel" id="debug-panel"></div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
@@ -495,19 +503,16 @@ const MARKS = [
 
 const STATUS_CONFIG = {
   available: { bg: '#16a34a', icon: '✅', title: 'Доступно', subtitle: 'Выставьте в зал', action: 'ОК', voice: 'Товар доступен к продаже', next: 'hide' },
-  expired: { bg: '#dc2626', icon: '', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
-  written_off: { bg: '#dc2626', icon: '🚫', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'hide' },
+  expired: { bg: '#dc2626', icon: '⛔', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
+  written_off: { bg: '#dc2626', icon: '', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'hide' },
   sold: { bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка продана ранее', next: 'hide' },
-  not_ours: { bg: '#dc2626', icon: '', title: 'Не наша марка', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка не принадлежит компании', next: 'hide' },
+  not_ours: { bg: '#dc2626', icon: '❌', title: 'Не наша марка', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка не принадлежит компании', next: 'hide' },
   no_connection: { bg: '#f59e0b', icon: '📡', title: 'Нет связи', subtitle: 'Повторите попытку', action: 'Повторить', voice: 'Нет связи с сервером', next: 'reload' },
-  not_in_turnover: { bg: '#0284c7', icon: '📧', title: 'Код не введен в оборот', subtitle: 'Требуется заявка', action: 'В хелп', voice: 'Код не введен в оборот', next: 'add_pending' },
+  not_in_turnover: { bg: '#0284c7', icon: '', title: 'Код не введен в оборот', subtitle: 'Требуется заявка', action: 'В хелп', voice: 'Код не введен в оборот', next: 'add_pending' },
   ogv_blocked: { bg: '#7c3aed', icon: '⏳', title: 'Код заблокирован ОГВ', subtitle: 'Отложите товар', action: 'Отложить', voice: 'Код заблокирован ОГВ', next: 'add_pending' },
   unknown: { bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе', action: 'ОК', voice: 'Марка не найдена', next: 'hide' }
 };
 
-// ============================================================
-// СОСТОЯНИЕ
-// ============================================================
 let pendingItems = JSON.parse(localStorage.getItem('pendingMarks') || '[]');
 let html5QrCode = null;
 let cameraRunning = false;
@@ -523,9 +528,35 @@ let currentStatus = '';
 let currentPendingItem = null;
 let pushTimers = {};
 
-// ============================================================
-// УТИЛИТЫ
-// ============================================================
+// Отладка
+function debug(msg) {
+  console.log(msg);
+  const panel = document.getElementById('debug-panel');
+  if (panel.classList.contains('active')) {
+    const line = document.createElement('div');
+    line.className = 'debug-line';
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    panel.appendChild(line);
+    panel.scrollTop = panel.scrollHeight;
+  }
+}
+
+function toggleDebug() {
+  const panel = document.getElementById('debug-panel');
+  panel.classList.toggle('active');
+}
+
+// Двойной тап по заголовку включает отладку
+let debugTapCount = 0;
+document.querySelector('.scan-header-title').addEventListener('click', () => {
+  debugTapCount++;
+  if (debugTapCount >= 3) {
+    toggleDebug();
+    debugTapCount = 0;
+  }
+  setTimeout(() => debugTapCount = 0, 1000);
+});
+
 function normalizeCode(code) {
   if (!code) return '';
   const t = code.trim();
@@ -534,11 +565,31 @@ function normalizeCode(code) {
 
 function lookupStatus(code) {
   const n = code.trim();
-  for (const mark of MARKS) {
-    if (mark.km === n || mark.full === n || n.startsWith(mark.km) || mark.full.startsWith(n)) {
+  debug(`lookupStatus: ищем "${n}" (длина: ${n.length})`);
+  
+  for (let i = 0; i < MARKS.length; i++) {
+    const mark = MARKS[i];
+    debug(`  Проверяем марку ${i}: km="${mark.km}", full="${mark.full}"`);
+    
+    if (mark.km === n) {
+      debug(`  ✓ Найдено по точному совпадению КМ`);
+      return { status: mark.status, productName: mark.productName, stock: mark.stock, km: mark.km };
+    }
+    if (mark.full === n) {
+      debug(`  ✓ Найдено по точному совпадению полного кода`);
+      return { status: mark.status, productName: mark.productName, stock: mark.stock, km: mark.km };
+    }
+    if (n.startsWith(mark.km)) {
+      debug(`  ✓ Найдено: сканированный код начинается с КМ`);
+      return { status: mark.status, productName: mark.productName, stock: mark.stock, km: mark.km };
+    }
+    if (mark.full.startsWith(n) && n.length >= 15) {
+      debug(`  ✓ Найдено: полный код начинается со сканированного`);
       return { status: mark.status, productName: mark.productName, stock: mark.stock, km: mark.km };
     }
   }
+  
+  debug(`  ✗ Не найдено в базе`);
   return { status: 'unknown', productName: '', stock: '', km: normalizeCode(n) };
 }
 
@@ -571,14 +622,13 @@ function showToast(title, text) {
   }, 2000);
 }
 
-// ============================================================
-// УПРАВЛЕНИЕ ОВЕРЛЕЯМИ
-// ============================================================
 function hideAllOverlays() {
+  debug('hideAllOverlays');
   document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
 }
 
 function showOverlayResult(config) {
+  debug(`showOverlayResult: ${config.title}`);
   const ov = document.getElementById('overlay-result');
   ov.style.background = config.bg;
   document.getElementById('ov-icon').textContent = config.icon;
@@ -593,7 +643,7 @@ function showOverlayResult(config) {
   copyBtn.onclick = () => {
     navigator.clipboard.writeText(currentCode).then(() => {
       copyBtn.textContent = '✓ Скопировано';
-      setTimeout(() => copyBtn.textContent = '📋 Скопировать код', 1500);
+      setTimeout(() => copyBtn.textContent = ' Скопировать код', 1500);
     });
   };
 
@@ -607,15 +657,17 @@ function showOverlayResult(config) {
 }
 
 function showOverlayWriteoff() {
+  debug('showOverlayWriteoff');
   hideAllOverlays();
   document.getElementById('overlay-writeoff').classList.add('active');
 }
 
 function showOverlayNotification(item) {
+  debug('showOverlayNotification');
   const body = document.getElementById('notification-body');
   const msg = item.type === 'help' 
-    ? '✅ Заявка обработана. Отсканируйте марку — статус изменится на «Выставьте в торговый зал».' 
-    : '✅ Статус марки изменён. Отсканируйте марку — статус изменится на «Выставьте в торговый зал».';
+    ? '✅ Заявка обработана. Отсканируйте марку.' 
+    : '✅ Статус изменён. Отсканируйте марку.';
   body.innerHTML = `
     <div class="notification-product">
       <div class="notification-product-name">${item.productName}</div>
@@ -629,9 +681,6 @@ function showOverlayNotification(item) {
   speak('Уведомление. ' + item.productName);
 }
 
-// ============================================================
-// КАМЕРА — запускается ОДИН РАЗ и работает постоянно
-// ============================================================
 async function startCamera() {
   if (cameraRunning) return;
   
@@ -640,7 +689,10 @@ async function startCamera() {
   hideAllOverlays();
   
   try {
+    debug('Создаем Html5Qrcode...');
     html5QrCode = new Html5Qrcode("reader", { verbose: false });
+    
+    debug('Запускаем камеру...');
     await html5QrCode.start(
       { facingMode: "environment" },
       { 
@@ -654,11 +706,14 @@ async function startCamera() {
         experimentalFeatures: { useBarCodeDetectorIfAvailable: true } 
       },
       onScanSuccess,
-      () => {}
+      (error) => {
+        // Игнорируем ошибки сканирования
+      }
     );
     cameraRunning = true;
-    console.log('Камера запущена');
+    debug('✓ Камера запущена');
   } catch (err) {
+    debug(' Ошибка камеры: ' + err.message);
     console.error('Ошибка камеры:', err);
     alert('Не удалось запустить камеру: ' + err.message);
   }
@@ -670,18 +725,19 @@ async function stopCamera() {
     await html5QrCode.stop();
     html5QrCode = null;
     cameraRunning = false;
-    console.log('Камера остановлена');
+    debug('Камера остановлена');
   } catch (e) {
-    console.error('Ошибка остановки:', e);
+    debug('Ошибка остановки: ' + e.message);
   }
 }
 
-// ============================================================
-// СКАНИРОВАНИЕ
-// ============================================================
 async function onScanSuccess(decodedText) {
+  debug(`onScanSuccess: "${decodedText}"`);
   const now = Date.now();
-  if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
+  if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) {
+    debug('Пропускаем дубликат');
+    return;
+  }
   lastScannedCode = decodedText;
   lastScanTime = now;
   
@@ -694,9 +750,12 @@ async function onScanSuccess(decodedText) {
   currentStock = markData.stock || '';
   currentStatus = markData.status;
 
+  debug(`Результат: status=${currentStatus}, name="${currentName}"`);
+
   const pendingItem = findPendingByCode(currentKm);
 
   if (pendingItem) {
+    debug(`Найдено в pending: step=${pendingItem.step}`);
     if (pendingItem.step === 'waiting') {
       showOverlayResult({ 
         bg: '#6b7280', icon: '⏳', title: 'Задание в работе', 
@@ -711,14 +770,13 @@ async function onScanSuccess(decodedText) {
     }
   } else {
     const config = STATUS_CONFIG[markData.status];
+    debug(`Показываем результат: ${config.title}`);
     showOverlayResult(config);
   }
 }
 
-// ============================================================
-// ДЕЙСТВИЯ ПОСЛЕ РЕЗУЛЬТАТА
-// ============================================================
 function handleResultAction(config) {
+  debug(`handleResultAction: ${config.next}`);
   if (config.next === 'writeoff') {
     showOverlayWriteoff();
   } else if (config.next === 'add_pending') {
@@ -731,9 +789,10 @@ function handleResultAction(config) {
       });
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
       schedulePush(currentKm, 30000);
+      debug(`Добавлено в pending: ${currentKm}`);
     }
-    showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 30 сек');
-    hideAllOverlays(); // Просто скрываем оверлей — камера продолжает работать!
+    showToast(type === 'ogv' ? '⏳ Товар отложен' : ' Заявка создана', 'Пуш через 30 сек');
+    hideAllOverlays();
   } else if (config.next === 'remove_pending') {
     removePendingByCode(currentKm);
     showToast('✅ Товар выставлен в зал', 'Задание выполнено');
@@ -743,13 +802,10 @@ function handleResultAction(config) {
   } else if (config.next === 'reload') {
     window.location.reload();
   } else if (config.next === 'hide') {
-    hideAllOverlays(); // Просто скрываем — камера работает
+    hideAllOverlays();
   }
 }
 
-// ============================================================
-// PENDING
-// ============================================================
 function findPendingByCode(km) {
   return pendingItems.find(p => p.normalizedCode === km);
 }
@@ -767,7 +823,6 @@ function schedulePush(km, delayMs = 30000) {
     if (item && item.step === 'waiting') {
       item.step = 'notified';
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-      // Показываем пуш только если камера активна
       if (cameraRunning) {
         showOverlayNotification(item);
       }
@@ -776,9 +831,6 @@ function schedulePush(km, delayMs = 30000) {
   }, delayMs);
 }
 
-// ============================================================
-// СПИСКИ
-// ============================================================
 function updatePendingList() {
   const list = document.getElementById('pending-list');
   const count = document.getElementById('pending-count');
@@ -828,9 +880,6 @@ function showDemoCodes() {
   document.getElementById('screen-demo').classList.add('active');
 }
 
-// ============================================================
-// ОБРАБОТЧИКИ КНОПОК
-// ============================================================
 document.getElementById('btn-scan-back').onclick = async () => {
   hideAllOverlays();
   await stopCamera();
@@ -884,6 +933,7 @@ if ('speechSynthesis' in window) {
 }
 
 updatePendingList();
+debug('Приложение загружено');
 </script>
 </body>
 </html>
