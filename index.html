@@ -636,67 +636,117 @@ function showToast(title, text) {
   setTimeout(() => toast.remove(), 2000);
 }
 
-// ИСПРАВЛЕНО: полный сброс сканера перед перезапуском
+// ИСПРАВЛЕНО: полный сброс с задержками
 async function resetScanner() {
-  if (html5QrCode) {
+  console.log('resetScanner: начинаем сброс');
+  
+  // Сначала останавливаем сканирование
+  if (html5QrCode && isScanning) {
     try {
-      if (isScanning) {
-        await html5QrCode.stop();
-      }
-      const reader = document.getElementById('reader');
-      while (reader.firstChild) {
-        reader.removeChild(reader.firstChild);
-      }
-      reader.innerHTML = `
-        <div class="scan-overlay">
-          <div class="scan-frame"></div>
-        </div>
-        <div class="scan-loader" id="scan-loader">
-          <div class="spinner"></div>
-          <span>Запуск камеры...</span>
-        </div>
-      `;
+      console.log('Останавливаем сканер...');
+      await html5QrCode.stop();
+      console.log('Сканер остановлен');
     } catch (e) {
-      console.error('Ошибка при сбросе сканера:', e);
+      console.error('Ошибка остановки:', e);
     }
-    html5QrCode = null;
   }
+  
+  // Ждем освобождения камеры
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Обнуляем ссылку
+  html5QrCode = null;
   isScanning = false;
+  
+  // Очищаем контейнер
+  const reader = document.getElementById('reader');
+  if (reader) {
+    reader.innerHTML = '';
+    reader.innerHTML = `
+      <div class="scan-overlay">
+        <div class="scan-frame"></div>
+      </div>
+      <div class="scan-loader" id="scan-loader">
+        <div class="spinner"></div>
+        <span>Запуск камеры...</span>
+      </div>
+    `;
+  }
+  
+  console.log('resetScanner: сброс завершен');
 }
 
 async function startScanner() {
-  if (isScanning) return;
+  console.log('startScanner: начинаем запуск');
+  
+  if (isScanning) {
+    console.log('Уже сканируем, выходим');
+    return;
+  }
+  
   showScreen('screen-scan');
+  
+  // Ждем рендеринга экрана
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
   const loader = document.getElementById('scan-loader');
   if (loader) {
     loader.classList.remove('hidden');
-    loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
   }
+  
   try {
+    console.log('Создаем новый Html5Qrcode...');
     html5QrCode = new Html5Qrcode("reader", { verbose: false });
+    
+    console.log('Запускаем камеру...');
     await html5QrCode.start(
       { facingMode: "environment" },
-      { fps: 15, qrbox: (vw, vh) => ({ width: Math.floor(Math.min(vw, vh) * 0.72), height: Math.floor(Math.min(vw, vh) * 0.72) }), formatsToSupport: [Html5QrcodeSupportedFormats.DATA_MATRIX, Html5QrcodeSupportedFormats.QR_CODE], aspectRatio: 1.0, experimentalFeatures: { useBarCodeDetectorIfAvailable: true } },
+      { 
+        fps: 15, 
+        qrbox: (vw, vh) => ({ 
+          width: Math.floor(Math.min(vw, vh) * 0.72), 
+          height: Math.floor(Math.min(vw, vh) * 0.72) 
+        }), 
+        formatsToSupport: [Html5QrcodeSupportedFormats.DATA_MATRIX, Html5QrcodeSupportedFormats.QR_CODE], 
+        aspectRatio: 1.0, 
+        experimentalFeatures: { useBarCodeDetectorIfAvailable: true } 
+      },
       onScanSuccess,
       () => {}
     );
+    
     isScanning = true;
+    console.log('Камера запущена успешно');
+    
     const loaderEl = document.getElementById('scan-loader');
-    if (loaderEl) loaderEl.classList.add('hidden');
+    if (loaderEl) {
+      loaderEl.classList.add('hidden');
+    }
   } catch (err) {
-    console.error('Ошибка камеры:', err);
+    console.error('Ошибка запуска камеры:', err);
+    const loaderEl = document.getElementById('scan-loader');
+    if (loaderEl) {
+      loaderEl.innerHTML = `<div style="color:#f87171;text-align:center;padding:20px">Ошибка камеры<br><small>${err.message}</small></div>`;
+    }
   }
 }
 
-// ИСПРАВЛЕНО: функция сброса и перезапуска
 async function resetAndStart() {
+  console.log('resetAndStart: начинаем');
   await resetScanner();
-  setTimeout(() => startScanner(), 300);
+  console.log('resetAndStart: ждем перед запуском');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  console.log('resetAndStart: запускаем сканер');
+  await startScanner();
 }
 
 async function stopScanner() {
   if (html5QrCode && isScanning) {
-    try { await html5QrCode.stop(); } catch (e) {}
+    try { 
+      await html5QrCode.stop(); 
+    } catch (e) {
+      console.error('Ошибка остановки:', e);
+    }
   }
   isScanning = false;
 }
@@ -734,6 +784,7 @@ function showPushNotification(item) {
 }
 
 async function onScanSuccess(decodedText) {
+  console.log('onScanSuccess:', decodedText);
   const now = Date.now();
   if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
   lastScannedCode = decodedText;
@@ -789,6 +840,7 @@ function showResult(config) {
 }
 
 function handleResultAction(config) {
+  console.log('handleResultAction:', config.next);
   if (config.next === 'writeoff') {
     showScreen('screen-writeoff');
   } else if (config.next === 'add_pending') {
@@ -800,18 +852,15 @@ function handleResultAction(config) {
       schedulePush(currentKm, 30000);
     }
     showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 30 сек');
-    // ИСПРАВЛЕНО: используем resetAndStart вместо startScanner
     setTimeout(() => resetAndStart(), 500);
   } else if (config.next === 'remove_pending') {
     removePendingByCode(currentKm);
     showToast('✅ Товар выставлен в зал', 'Задание выполнено');
     currentPendingItem = null;
-    // ИСПРАВЛЕНО: используем resetAndStart вместо startScanner
     setTimeout(() => resetAndStart(), 500);
   } else if (config.next === 'reload') {
     window.location.reload();
   } else if (config.next === 'scan') {
-    // ИСПРАВЛЕНО: используем resetAndStart вместо startScanner
     setTimeout(() => resetAndStart(), 500);
   }
 }
