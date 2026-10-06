@@ -462,7 +462,7 @@
 
   <div class="overlay overlay-notification" id="overlay-notification">
     <div class="notification-banner">
-      <div class="notification-icon">🔔</div>
+      <div class="notification-icon"></div>
       <div class="notification-content">
         <div class="notification-title">Уведомление</div>
         <div class="notification-text">Проверьте товар</div>
@@ -515,7 +515,10 @@ let currentKm = '';
 let currentName = '';
 let currentStock = '';
 let currentStatus = '';
-let pushTimers = {};
+
+// НАДЁЖНАЯ СИСТЕМА ПУШЕЙ ЧЕРЕЗ setInterval
+let pushCheckInterval = null;
+const PUSH_DELAY_MS = 20000; // 20 секунд
 
 function normalizeCode(code) {
   if (!code) return '';
@@ -581,7 +584,7 @@ function showOverlayResult(config) {
   copyBtn.onclick = () => {
     navigator.clipboard.writeText(currentCode).then(() => {
       copyBtn.textContent = '✓ Скопировано';
-      setTimeout(() => copyBtn.textContent = '📋 Скопировать код', 1500);
+      setTimeout(() => copyBtn.textContent = ' Скопировать код', 1500);
     });
   };
 
@@ -706,9 +709,8 @@ function handleResultAction(config) {
         normalizedCode: currentKm, timestamp: Date.now(), step: 'waiting' 
       });
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-      schedulePush(currentKm, 20000);
     }
-    showToast(type === 'ogv' ? ' Товар отложен' : '📧 Заявка создана', 'Пуш через 20 сек');
+    showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 20 сек');
     hideAllOverlays();
   } else if (config.next === 'remove_pending') {
     removePendingByCode(currentKm);
@@ -729,7 +731,6 @@ function findPendingByCode(km) {
 function removePendingByCode(km) {
   pendingItems = pendingItems.filter(p => p.normalizedCode !== km);
   localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-  if (pushTimers[km]) { clearTimeout(pushTimers[km]); delete pushTimers[km]; }
 }
 
 function clearAllPending() {
@@ -739,33 +740,37 @@ function clearAllPending() {
   }
   pendingItems = [];
   localStorage.removeItem('pendingMarks');
-  Object.keys(pushTimers).forEach(k => {
-    clearTimeout(pushTimers[k]);
-    delete pushTimers[k];
-  });
   updatePendingList();
   showToast('️ Список очищен', '');
 }
 
-function schedulePush(km, delayMs = 20000) {
-  if (pushTimers[km]) clearTimeout(pushTimers[km]);
-  pushTimers[km] = setTimeout(() => {
-    const item = findPendingByCode(km);
-    if (item && item.step === 'waiting') {
-      item.step = 'notified';
-      localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-      // ИСПРАВЛЕНО: показываем пуш даже если камера не активна
-      if (!cameraRunning) {
-        // Автоматически переключаемся на экран сканирования
-        document.getElementById('screen-start').classList.add('hidden');
-        document.getElementById('screen-scan').classList.add('active');
-        cameraRunning = true; // Помечаем как активную чтобы не запускать повторно
+// НАДЁЖНАЯ ПРОВЕРКА ПУШЕЙ - запускается при загрузке и работает постоянно
+function startPushChecker() {
+  if (pushCheckInterval) return; // Уже запущен
+  
+  pushCheckInterval = setInterval(() => {
+    const now = Date.now();
+    let changed = false;
+    
+    pendingItems.forEach(item => {
+      if (item.step === 'waiting' && (now - item.timestamp) >= PUSH_DELAY_MS) {
+        item.step = 'notified';
+        changed = true;
+        
+        // Показываем пуш
+        if (!cameraRunning) {
+          document.getElementById('screen-start').classList.add('hidden');
+          document.getElementById('screen-scan').classList.add('active');
+        }
+        showOverlayNotification(item);
       }
-      showOverlayNotification(item);
+    });
+    
+    if (changed) {
+      localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
       updatePendingList();
     }
-    delete pushTimers[km];
-  }, delayMs);
+  }, 1000); // Проверяем каждую секунду
 }
 
 function updatePendingList() {
@@ -784,7 +789,7 @@ function updatePendingList() {
     if (item.type === 'help') {
       statusText = item.step === 'notified' ? '✅ Заявка обработана' : '📧 Заявка в хелп';
     } else {
-      statusText = item.step === 'notified' ? '✅ Статус изменён' : ' Заблокирован ОГВ';
+      statusText = item.step === 'notified' ? '✅ Статус изменён' : '⏳ Заблокирован ОГВ';
     }
     const time = new Date(item.timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     div.innerHTML = `<div class="pending-status">${statusText}</div><div class="pending-product">${item.productName}</div><div class="pending-time">${time}</div>`;
@@ -796,9 +801,9 @@ function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
   const labels = { 
-    available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее', 
-    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи', 
-    not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ' 
+    available: '🟢 Доступно', expired: ' Просрочено', written_off: ' Списано ранее', 
+    sold: ' Продано ранее', not_ours: ' Не наша марка', no_connection: '🟡 Нет связи', 
+    not_in_turnover: ' Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ' 
   };
   for (const mark of MARKS) {
     const item = document.createElement('div');
@@ -833,7 +838,6 @@ document.getElementById('btn-writeoff-confirm').onclick = () => {
 document.getElementById('btn-writeoff-cancel').onclick = () => hideAllOverlays();
 document.getElementById('btn-notification-close').onclick = () => {
   hideAllOverlays();
-  // Если камера не была активна, возвращаемся на стартовый экран
   if (!html5QrCode) {
     document.getElementById('screen-scan').classList.remove('active');
     document.getElementById('screen-start').classList.remove('hidden');
@@ -847,13 +851,11 @@ document.getElementById('btn-clear').onclick = clearAllPending;
 document.getElementById('btn-test-push').onclick = () => {
   const item = pendingItems.find(p => p.step === 'waiting');
   if (item) {
-    if (pushTimers[item.normalizedCode]) { clearTimeout(pushTimers[item.normalizedCode]); delete pushTimers[item.normalizedCode]; }
     item.step = 'notified';
     localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
     if (!cameraRunning) {
       document.getElementById('screen-start').classList.add('hidden');
       document.getElementById('screen-scan').classList.add('active');
-      cameraRunning = true;
     }
     showOverlayNotification(item);
     updatePendingList();
@@ -881,6 +883,8 @@ if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
+// ЗАПУСКАЕМ ПРОВЕРКУ ПУШЕЙ ПРИ ЗАГРУЗКЕ
+startPushChecker();
 updatePendingList();
 </script>
 </body>
