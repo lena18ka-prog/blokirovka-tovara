@@ -47,8 +47,69 @@
     border-radius: 16px;
     cursor: pointer;
     box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    margin-bottom: 16px;
   }
   .btn-start:active { transform: scale(0.97); }
+  .btn-demo {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border: 2px solid rgba(255,255,255,0.5);
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .btn-demo:active { transform: scale(0.97); }
+
+  /* ===== Экран демо-кодов ===== */
+  #screen-demo {
+    background: #0f172a;
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .demo-header {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .demo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .demo-item {
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .demo-item:active { background: rgba(255,255,255,0.2); }
+  .demo-status {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .demo-code {
+    font-size: 12px;
+    font-family: monospace;
+    opacity: 0.9;
+    word-break: break-all;
+  }
+  .btn-back {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border: none;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+  }
 
   /* ===== Экран сканирования ===== */
   #screen-scan { background: #000; }
@@ -224,9 +285,17 @@
   <h1>Проверка марок</h1>
   <p>Сканирование DataMatrix<br>Честный Знак</p>
   <button class="btn-start" id="btn-start">Начать работу</button>
+  <button class="btn-demo" id="btn-demo">Показать тестовые коды</button>
 </div>
 
-<!-- Экран 2: Сканирование -->
+<!-- Экран 2: Демо-коды -->
+<div id="screen-demo" class="screen">
+  <div class="demo-header">Тестовые коды</div>
+  <div class="demo-list" id="demo-list"></div>
+  <button class="btn-back" id="btn-demo-back">Назад</button>
+</div>
+
+<!-- Экран 3: Сканирование -->
 <div id="screen-scan" class="screen">
   <div class="scan-header">Наведите камеру на марку</div>
   <div id="reader">
@@ -240,7 +309,7 @@
   </div>
 </div>
 
-<!-- Экран 3: Результат -->
+<!-- Экран 4: Результат -->
 <div id="screen-result" class="screen">
   <div class="result-icon" id="result-icon"></div>
   <div class="result-title" id="result-title"></div>
@@ -249,7 +318,7 @@
   <button class="btn-action" id="btn-action"></button>
 </div>
 
-<!-- Экран 4: Списание (мок) -->
+<!-- Экран 5: Списание (мок) -->
 <div id="screen-writeoff" class="screen">
   <h2>⚠️ Списание товара</h2>
   <p>Подтвердите списание просроченного товара в системе</p>
@@ -262,19 +331,16 @@
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 // ============================================================
-// ДАННЫЕ МАРКОК (МОК)
-// Заказчик подставит сюда реальные коды из таблицы (30 шт.)
-// Формат: "код_марки": { status: "ключ_статуса" }
-// Ключи статуса: available, expired, written_off, sold, not_ours, no_connection
+// ДАННЫЕ МАРКОК (6 тестовых кодов из таблицы)
+// Заменены ? на 0 для валидности DataMatrix
 // ============================================================
 const MARKS = {
-  // Примеры (замените на реальные коды из таблицы):
-  // "0104603785000011215ABCDEF123456": { status: "available" },
-  // "0104603785000011215GHIJKL678901": { status: "expired" },
-  // "01046037850000115ABCDEF123456":   { status: "written_off" },
-  // "01046037850000115GHIJKL678901":   { status: "sold" },
-  // "01046037850000118ABCDEF123456":   { status: "not_ours" },
-  // "01046037850000118GHIJKL678901":   { status: "no_connection" },
+  "010460700023452121nYv7H0000000000": { status: "available" },
+  "010460700023452121nYv7H0000000001": { status: "expired" },
+  "010460700023452121nYv7H0000000002": { status: "written_off" },
+  "010460700023452121nYv7H0000000003": { status: "sold" },
+  "010460700023452121nYv7H0000000004": { status: "not_ours" },
+  "010460700023452121nYv7H0000000005": { status: "no_connection" },
 };
 
 // ============================================================
@@ -303,37 +369,37 @@ const STATUS_CONFIG = {
     bg: '#dc2626',
     icon: '🚫',
     title: 'Списано ранее',
-    subtitle: 'Принято к сведению',
-    action: 'Принято',
-    voice: 'Марка была списана ранее',
+    subtitle: 'Утилизируйте товар',
+    action: 'Утилизировать',
+    voice: 'Марка списана ранее. Утилизируйте товар',
     next: 'scan'
   },
   sold: {
     bg: '#dc2626',
     icon: '🚫',
     title: 'Продано ранее',
-    subtitle: 'Принято к сведению',
-    action: 'Принято',
-    voice: 'Марка была продана ранее',
+    subtitle: 'Утилизируйте товар',
+    action: 'Утилизировать',
+    voice: 'Марка продана ранее. Утилизируйте товар',
     next: 'scan'
   },
   not_ours: {
     bg: '#dc2626',
     icon: '❌',
     title: 'Не наша марка',
-    subtitle: 'Принято к сведению',
-    action: 'Понятно',
-    voice: 'Марка не принадлежит компании',
+    subtitle: 'Утилизируйте товар',
+    action: 'Утилизировать',
+    voice: 'Марка не принадлежит компании. Утилизируйте товар',
     next: 'scan'
   },
   no_connection: {
     bg: '#f59e0b',
-    icon: '📡',
+    icon: '',
     title: 'Нет связи',
     subtitle: 'Повторите попытку позднее',
     action: 'Повторить',
     voice: 'Нет связи с сервером. Повторите попытку позднее',
-    next: 'scan'
+    next: 'reload'
   },
   unknown: {
     bg: '#6b7280',
@@ -353,7 +419,7 @@ let html5QrCode = null;
 let isScanning = false;
 let lastScannedCode = null;
 let lastScanTime = 0;
-const COOLDOWN_MS = 2500; // защита от повторного срабатывания на ту же марку
+const COOLDOWN_MS = 2500;
 
 // ============================================================
 // НАВИГАЦИЯ
@@ -361,6 +427,45 @@ const COOLDOWN_MS = 2500; // защита от повторного срабат
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+}
+
+// ============================================================
+// ПОКАЗ ДЕМO-КОДОВ
+// ============================================================
+function showDemoCodes() {
+  const list = document.getElementById('demo-list');
+  list.innerHTML = '';
+  
+  const statusLabels = {
+    available: ' Доступно',
+    expired: ' Просрочено',
+    written_off: '🔴 Списано ранее',
+    sold: '🔴 Продано ранее',
+    not_ours: '🔴 Не наша марка',
+    no_connection: '🟡 Нет связи'
+  };
+  
+  for (const [code, data] of Object.entries(MARKS)) {
+    const item = document.createElement('div');
+    item.className = 'demo-item';
+    item.innerHTML = `
+      <div class="demo-status">${statusLabels[data.status]}</div>
+      <div class="demo-code">${code}</div>
+    `;
+    item.onclick = () => {
+      // Копирование кода в буфер
+      navigator.clipboard.writeText(code).then(() => {
+        const original = item.querySelector('.demo-status').textContent;
+        item.querySelector('.demo-status').textContent = '✓ Скопировано';
+        setTimeout(() => {
+          item.querySelector('.demo-status').textContent = original;
+        }, 1000);
+      });
+    };
+    list.appendChild(item);
+  }
+  
+  showScreen('screen-demo');
 }
 
 // ============================================================
@@ -373,7 +478,6 @@ function lookupStatus(code) {
       return MARKS[key].status;
     }
   }
-  // В продакшене здесь будет запрос к БД КМ / ГИС МТ
   return 'unknown';
 }
 
@@ -494,6 +598,8 @@ function showResult(config, code) {
 function handleAction(config) {
   if (config.next === 'writeoff') {
     showScreen('screen-writeoff');
+  } else if (config.next === 'reload') {
+    window.location.reload();
   } else {
     setTimeout(() => startScanner(), 300);
   }
@@ -505,7 +611,6 @@ function handleAction(config) {
 document.getElementById('btn-writeoff-confirm').onclick = () => {
   vibrate([100, 50, 100, 50, 200]);
   speak('Списание подтверждено');
-  // В продакшене: API-запрос к системе списания
   setTimeout(() => startScanner(), 800);
 };
 
@@ -517,7 +622,6 @@ document.getElementById('btn-writeoff-cancel').onclick = () => {
 // СТАРТ
 // ============================================================
 document.getElementById('btn-start').onclick = () => {
-  // Прогрев speechSynthesis (критично для iOS)
   if ('speechSynthesis' in window) {
     window.speechSynthesis.getVoices();
     const warmup = new SpeechSynthesisUtterance('');
@@ -526,6 +630,9 @@ document.getElementById('btn-start').onclick = () => {
   }
   startScanner();
 };
+
+document.getElementById('btn-demo').onclick = showDemoCodes;
+document.getElementById('btn-demo-back').onclick = () => showScreen('screen-start');
 
 if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
