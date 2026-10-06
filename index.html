@@ -106,7 +106,10 @@
     border-radius: 12px;
     padding: 14px;
     border-left: 4px solid;
+    cursor: pointer;
+    transition: background 0.15s;
   }
+  .pending-item:active { background: rgba(255,255,255,0.15); }
   .pending-item.help { border-left-color: #0284c7; }
   .pending-item.ogv { border-left-color: #7c3aed; }
   .pending-item.notified { border-left-color: #16a34a; }
@@ -282,39 +285,6 @@
   }
   .btn-action:active { transform: scale(0.97); }
 
-  .overlay-writeoff {
-    background: rgba(42, 10, 10, 0.97);
-  }
-  .overlay-writeoff h2 { font-size: 28px; margin-bottom: 16px; }
-  .overlay-writeoff p { font-size: 16px; opacity: 0.85; margin-bottom: 32px; line-height: 1.4; }
-  .writeoff-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-    max-width: 320px;
-  }
-  .btn-confirm {
-    background: #f44336;
-    color: #fff;
-    border: none;
-    padding: 18px;
-    font-size: 18px;
-    font-weight: 700;
-    border-radius: 14px;
-    cursor: pointer;
-  }
-  .btn-cancel {
-    background: rgba(255,255,255,0.15);
-    color: #fff;
-    border: none;
-    padding: 18px;
-    font-size: 18px;
-    font-weight: 600;
-    border-radius: 14px;
-    cursor: pointer;
-  }
-
   .overlay-notification {
     background: rgba(0,0,0,0.95);
     justify-content: flex-start;
@@ -451,18 +421,9 @@
     <button class="btn-action" id="btn-action"></button>
   </div>
 
-  <div class="overlay overlay-writeoff" id="overlay-writeoff">
-    <h2>⚠️ Списание товара</h2>
-    <p>Подтвердите списание просроченного товара</p>
-    <div class="writeoff-buttons">
-      <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
-      <button class="btn-cancel" id="btn-writeoff-cancel">Отмена</button>
-    </div>
-  </div>
-
   <div class="overlay overlay-notification" id="overlay-notification">
     <div class="notification-banner">
-      <div class="notification-icon"></div>
+      <div class="notification-icon">🔔</div>
       <div class="notification-content">
         <div class="notification-title">Уведомление</div>
         <div class="notification-text">Проверьте товар</div>
@@ -493,7 +454,8 @@ const MARKS = [
 
 const STATUS_CONFIG = {
   available: { bg: '#16a34a', icon: '✅', title: 'Доступно', subtitle: 'Выставьте в зал', action: 'ОК', voice: 'Товар доступен к продаже', next: 'hide' },
-  expired: { bg: '#dc2626', icon: '⛔', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
+  // ИЗМЕНЕНО: было 'writeoff', стало 'writeoff_auto' — без второго экрана
+  expired: { bg: '#dc2626', icon: '', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff_auto' },
   written_off: { bg: '#dc2626', icon: '🚫', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'hide' },
   sold: { bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка продана ранее', next: 'hide' },
   not_ours: { bg: '#dc2626', icon: '❌', title: 'Не наша марка', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка не принадлежит компании', next: 'hide' },
@@ -516,9 +478,8 @@ let currentName = '';
 let currentStock = '';
 let currentStatus = '';
 
-// НАДЁЖНАЯ СИСТЕМА ПУШЕЙ ЧЕРЕЗ setInterval
 let pushCheckInterval = null;
-const PUSH_DELAY_MS = 20000; // 20 секунд
+const PUSH_DELAY_MS = 20000;
 
 function normalizeCode(code) {
   if (!code) return '';
@@ -584,7 +545,7 @@ function showOverlayResult(config) {
   copyBtn.onclick = () => {
     navigator.clipboard.writeText(currentCode).then(() => {
       copyBtn.textContent = '✓ Скопировано';
-      setTimeout(() => copyBtn.textContent = ' Скопировать код', 1500);
+      setTimeout(() => copyBtn.textContent = '📋 Скопировать код', 1500);
     });
   };
 
@@ -595,11 +556,6 @@ function showOverlayResult(config) {
   hideAllOverlays();
   ov.classList.add('active');
   speak(config.voice);
-}
-
-function showOverlayWriteoff() {
-  hideAllOverlays();
-  document.getElementById('overlay-writeoff').classList.add('active');
 }
 
 function showOverlayNotification(item) {
@@ -697,9 +653,14 @@ async function onScanSuccess(decodedText) {
   }
 }
 
+// ИЗМЕНЕНО: обработка writeoff_auto — без второго экрана
 function handleResultAction(config) {
-  if (config.next === 'writeoff') {
-    showOverlayWriteoff();
+  if (config.next === 'writeoff_auto') {
+    // Автоматическое списание без подтверждения
+    vibrate([100, 50, 100, 50, 200]);
+    speak('Списание подтверждено');
+    showToast('✅ Списание подтверждено', '');
+    hideAllOverlays();
   } else if (config.next === 'add_pending') {
     const type = currentStatus === 'ogv_blocked' ? 'ogv' : 'help';
     const existing = findPendingByCode(currentKm);
@@ -710,7 +671,7 @@ function handleResultAction(config) {
       });
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
     }
-    showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 20 сек');
+    showToast(type === 'ogv' ? '⏳ Товар отложен' : ' Заявка создана', 'Пуш через 20 сек');
     hideAllOverlays();
   } else if (config.next === 'remove_pending') {
     removePendingByCode(currentKm);
@@ -741,12 +702,11 @@ function clearAllPending() {
   pendingItems = [];
   localStorage.removeItem('pendingMarks');
   updatePendingList();
-  showToast('️ Список очищен', '');
+  showToast('🗑️ Список очищен', '');
 }
 
-// НАДЁЖНАЯ ПРОВЕРКА ПУШЕЙ - запускается при загрузке и работает постоянно
 function startPushChecker() {
-  if (pushCheckInterval) return; // Уже запущен
+  if (pushCheckInterval) return;
   
   pushCheckInterval = setInterval(() => {
     const now = Date.now();
@@ -757,7 +717,6 @@ function startPushChecker() {
         item.step = 'notified';
         changed = true;
         
-        // Показываем пуш
         if (!cameraRunning) {
           document.getElementById('screen-start').classList.add('hidden');
           document.getElementById('screen-scan').classList.add('active');
@@ -770,7 +729,7 @@ function startPushChecker() {
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
       updatePendingList();
     }
-  }, 1000); // Проверяем каждую секунду
+  }, 1000);
 }
 
 function updatePendingList() {
@@ -787,7 +746,7 @@ function updatePendingList() {
     div.className = `pending-item ${item.step === 'notified' ? 'notified' : item.type}`;
     let statusText = '';
     if (item.type === 'help') {
-      statusText = item.step === 'notified' ? '✅ Заявка обработана' : '📧 Заявка в хелп';
+      statusText = item.step === 'notified' ? '✅ Заявка обработана' : ' Заявка в хелп';
     } else {
       statusText = item.step === 'notified' ? '✅ Статус изменён' : '⏳ Заблокирован ОГВ';
     }
@@ -801,9 +760,9 @@ function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
   const labels = { 
-    available: '🟢 Доступно', expired: ' Просрочено', written_off: ' Списано ранее', 
-    sold: ' Продано ранее', not_ours: ' Не наша марка', no_connection: '🟡 Нет связи', 
-    not_in_turnover: ' Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ' 
+    available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее', 
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи', 
+    not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: ' Заблокирован ОГВ' 
   };
   for (const mark of MARKS) {
     const item = document.createElement('div');
@@ -830,12 +789,6 @@ document.getElementById('btn-scan-back').onclick = async () => {
   updatePendingList();
 };
 
-document.getElementById('btn-writeoff-confirm').onclick = () => { 
-  vibrate([100, 50, 100, 50, 200]); 
-  speak('Списание подтверждено'); 
-  hideAllOverlays(); 
-};
-document.getElementById('btn-writeoff-cancel').onclick = () => hideAllOverlays();
 document.getElementById('btn-notification-close').onclick = () => {
   hideAllOverlays();
   if (!html5QrCode) {
@@ -879,11 +832,18 @@ document.getElementById('btn-demo-back').onclick = () => {
   document.getElementById('screen-demo').classList.remove('active');
 };
 
+// НОВОЕ: клик по карточке pending открывает сканер
+document.getElementById('pending-list').addEventListener('click', (e) => {
+  const item = e.target.closest('.pending-item');
+  if (item) {
+    startCamera();
+  }
+});
+
 if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
-// ЗАПУСКАЕМ ПРОВЕРКУ ПУШЕЙ ПРИ ЗАГРУЗКЕ
 startPushChecker();
 updatePendingList();
 </script>
