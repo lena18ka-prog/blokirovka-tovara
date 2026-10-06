@@ -353,9 +353,6 @@
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-// ============================================================
-// ДАННЫЕ МАРКОК (6 URL с соответствующими статусами)
-// ============================================================
 const MARKS = {
   "https://t.me/unilaru": { status: "available" },
   "https://gpt.ai.corp.tander.ru/": { status: "expired" },
@@ -379,7 +376,7 @@ const STATUS_CONFIG = {
     action: 'Утилизировать', voice: 'Марка списана ранее. Утилизируйте товар', next: 'scan'
   },
   sold: {
-    bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар',
+    bg: '#dc2626', icon: '', title: 'Продано ранее', subtitle: 'Утилизируйте товар',
     action: 'Утилизировать', voice: 'Марка продана ранее. Утилизируйте товар', next: 'scan'
   },
   not_ours: {
@@ -392,7 +389,7 @@ const STATUS_CONFIG = {
   },
   unknown: {
     bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе',
-    action: 'ОК', voice: 'Марка не найдена в базе данных', next: 'scan'  // ИСПРАВЛЕНО: было 'scan', но теперь корректно работает
+    action: 'ОК', voice: 'Марка не найдена в базе данных', next: 'scan'
   }
 };
 
@@ -402,7 +399,6 @@ let lastScannedCode = null;
 let lastScanTime = 0;
 const COOLDOWN_MS = 2500;
 let currentResultCode = '';
-let cameraPermissionDenied = false;
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -413,8 +409,8 @@ function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
   const statusLabels = {
-    available: '🟢 Доступно', expired: ' Просрочено', written_off: '🔴 Списано ранее',
-    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: ' Нет связи'
+    available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее',
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи'
   };
   
   for (const [code, data] of Object.entries(MARKS)) {
@@ -457,21 +453,49 @@ function vibrate(pattern) {
   if ('vibrate' in navigator) navigator.vibrate(pattern);
 }
 
+// ИСПРАВЛЕНО: полная очистка сканера
+async function resetScanner() {
+  if (html5QrCode) {
+    try {
+      if (isScanning) {
+        await html5QrCode.stop();
+      }
+      // Очищаем контейнер
+      const reader = document.getElementById('reader');
+      while (reader.firstChild) {
+        reader.removeChild(reader.firstChild);
+      }
+      // Восстанавливаем оверлей
+      reader.innerHTML = `
+        <div class="scan-overlay">
+          <div class="scan-frame"></div>
+        </div>
+        <div class="scan-loader" id="scan-loader">
+          <div class="spinner"></div>
+          <span>Запуск камеры...</span>
+        </div>
+      `;
+    } catch (e) {
+      console.error('Ошибка при сбросе сканера:', e);
+    }
+    html5QrCode = null;
+  }
+  isScanning = false;
+}
+
 async function startScanner() {
   if (isScanning) return;
   
-  // Сбрасываем флаг ошибки камеры
-  cameraPermissionDenied = false;
-  
   showScreen('screen-scan');
   const loader = document.getElementById('scan-loader');
-  loader.classList.remove('hidden');
-  loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
+  if (loader) {
+    loader.classList.remove('hidden');
+    loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
+  }
 
   try {
-    if (!html5QrCode) {
-      html5QrCode = new Html5Qrcode("reader", { verbose: false });
-    }
+    // Создаем новый экземпляр каждый раз
+    html5QrCode = new Html5Qrcode("reader", { verbose: false });
 
     await html5QrCode.start(
       { facingMode: "environment" },
@@ -493,28 +517,42 @@ async function startScanner() {
     );
 
     isScanning = true;
-    loader.classList.add('hidden');
+    const loaderEl = document.getElementById('scan-loader');
+    if (loaderEl) loaderEl.classList.add('hidden');
   } catch (err) {
     console.error('Ошибка запуска камеры:', err);
-    cameraPermissionDenied = true;
-    loader.innerHTML = `
-      <div class="scan-error">
-        <div style="font-size:48px;margin-bottom:12px"></div>
-        <div>Не удалось запустить камеру</div>
-        <div style="font-size:14px;opacity:0.7;margin-top:8px">${err.message}</div>
-        <button onclick="startScanner()">Повторить</button>
-      </div>
-    `;
+    const loaderEl = document.getElementById('scan-loader');
+    if (loaderEl) {
+      loaderEl.innerHTML = `
+        <div class="scan-error">
+          <div style="font-size:48px;margin-bottom:12px">📷</div>
+          <div>Не удалось запустить камеру</div>
+          <div style="font-size:14px;opacity:0.7;margin-top:8px">${err.message}</div>
+          <button onclick="resetAndStart()">Повторить</button>
+        </div>
+      `;
+    }
   }
 }
 
+// ИСПРАВЛЕНО: полный сброс и перезапуск
+async function resetAndStart() {
+  await resetScanner();
+  setTimeout(() => startScanner(), 300);
+}
+
 function onScanFailure(error) {
-  // Игнорируем ошибки сканирования - это нормально, когда марка не в кадре
+  // Игнорируем ошибки сканирования
 }
 
 async function stopScanner() {
-  if (!isScanning || !html5QrCode) return;
-  try { await html5QrCode.stop(); } catch (e) {}
+  if (html5QrCode && isScanning) {
+    try {
+      await html5QrCode.stop();
+    } catch (e) {
+      console.error('Ошибка остановки:', e);
+    }
+  }
   isScanning = false;
 }
 
@@ -549,7 +587,7 @@ function showResult(config, code) {
       copyBtn.textContent = '✓ Скопировано';
       copyBtn.classList.add('copied');
       setTimeout(() => {
-        copyBtn.textContent = '📋 Скопировать код';
+        copyBtn.textContent = ' Скопировать код';
         copyBtn.classList.remove('copied');
       }, 1500);
     });
@@ -562,23 +600,27 @@ function showResult(config, code) {
   showScreen('screen-result');
 }
 
+// ИСПРАВЛЕНО: корректный переход к сканированию
 function handleAction(config) {
   if (config.next === 'writeoff') {
     showScreen('screen-writeoff');
   } else if (config.next === 'reload') {
     window.location.reload();
   } else if (config.next === 'scan') {
-    // ИСПРАВЛЕНО: сразу запускаем сканирование после нажатия ОК
-    setTimeout(() => startScanner(), 100);
+    // Сбрасываем и перезапускаем сканер
+    resetAndStart();
   }
 }
 
 document.getElementById('btn-writeoff-confirm').onclick = () => {
   vibrate([100, 50, 100, 50, 200]);
   speak('Списание подтверждено');
-  setTimeout(() => startScanner(), 800);
+  resetAndStart();
 };
-document.getElementById('btn-writeoff-cancel').onclick = () => startScanner();
+
+document.getElementById('btn-writeoff-cancel').onclick = () => {
+  resetAndStart();
+};
 
 document.getElementById('btn-start').onclick = () => {
   if ('speechSynthesis' in window) {
