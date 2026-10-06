@@ -67,6 +67,20 @@
     max-width: 320px;
   }
   .btn-demo:active { transform: scale(0.97); }
+  .btn-test-push {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 12px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .btn-test-push:active { transform: scale(0.97); }
   
   .pending-section {
     padding: 20px;
@@ -320,7 +334,7 @@
     font-weight: 600;
     border-radius: 10px;
     cursor: pointer;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .btn-copy:active { transform: scale(0.97); }
   .btn-copy.copied {
@@ -338,8 +352,24 @@
     cursor: pointer;
     min-width: 220px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    margin-bottom: 12px;
   }
   .btn-action:active { transform: scale(0.97); }
+  .btn-back-result {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 14px;
+    cursor: pointer;
+    min-width: 220px;
+  }
+  .btn-back-result:active { 
+    transform: scale(0.97); 
+    background: rgba(255,255,255,0.1);
+  }
 
   #screen-writeoff {
     background: #2a0a0a;
@@ -384,7 +414,7 @@
   }
 
   #screen-notification {
-    background: rgba(0,0,0,0.9);
+    background: rgba(0,0,0,0.95);
     justify-content: flex-start;
     align-items: stretch;
     padding: 0;
@@ -437,7 +467,24 @@
     font-size: 14px;
     opacity: 0.9;
   }
-  .btn-notification-close {
+  .notification-buttons {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btn-place-in-hall {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    padding: 18px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 14px;
+    cursor: pointer;
+  }
+  .btn-place-in-hall:active { transform: scale(0.97); }
+  .btn-notification-later {
     background: rgba(255,255,255,0.2);
     color: #fff;
     border: none;
@@ -446,7 +493,6 @@
     font-weight: 600;
     border-radius: 14px;
     cursor: pointer;
-    margin: 20px;
   }
 </style>
 </head>
@@ -458,6 +504,7 @@
     <p>Сканирование DataMatrix · Честный Знак</p>
     <button class="btn-start" id="btn-start">Начать работу</button>
     <button class="btn-demo" id="btn-demo">Показать тестовые коды</button>
+    <button class="btn-test-push" id="btn-test-push"> Тест пуш-уведомления</button>
   </div>
   <div class="pending-section">
     <div class="pending-header">
@@ -494,12 +541,13 @@
   <div class="result-stock" id="result-stock"></div>
   <div class="result-subtitle" id="result-subtitle"></div>
   <div class="result-code" id="result-code"></div>
-  <button class="btn-copy" id="btn-copy">📋 Скопировать код</button>
+  <button class="btn-copy" id="btn-copy"> Скопировать код</button>
   <button class="btn-action" id="btn-action"></button>
+  <button class="btn-back-result" id="btn-back-result">← К списку</button>
 </div>
 
 <div id="screen-writeoff" class="screen">
-  <h2>⚠️ Списание товара</h2>
+  <h2>️ Списание товара</h2>
   <p>Подтвердите списание просроченного товара в системе</p>
   <div class="writeoff-buttons">
     <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
@@ -509,28 +557,28 @@
 
 <div id="screen-notification" class="screen">
   <div class="notification-banner">
-    <div class="notification-icon"></div>
+    <div class="notification-icon">🔔</div>
     <div class="notification-content">
       <div class="notification-title">Уведомление</div>
       <div class="notification-text">Проверьте товары</div>
     </div>
   </div>
   <div class="notification-body" id="notification-body"></div>
-  <button class="btn-notification-close" id="btn-notification-close">Закрыть</button>
+  <div class="notification-buttons">
+    <button class="btn-place-in-hall" id="btn-place-in-hall">✅ Выставить в зал</button>
+    <button class="btn-notification-later" id="btn-notification-later">Позже</button>
+  </div>
 </div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-// ============================================================
-// ДАННЫЕ МАРКОК (7 марок из Excel)
-// ============================================================
 const MARKS = [
   {
     km: "04620081141216VX39Rfe",
     full: "04620081141216VX39RfeAAAAdKhW",
     status: "ogv_blocked",
     productName: "ХИТС Бирюзовый DM Стик (ФМ): 10/500",
-    stock: "12 шт." // Заглушка, потом добавишь из БД
+    stock: "12 шт."
   },
   {
     km: "00000046218636j<St'eH",
@@ -590,7 +638,7 @@ const STATUS_CONFIG = {
     action: 'Утилизировать', voice: 'Марка списана ранее. Утилизируйте товар', next: 'scan'
   },
   sold: {
-    bg: '#dc2626', icon: '', title: 'Продано ранее', subtitle: 'Утилизируйте товар',
+    bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар',
     action: 'Утилизировать', voice: 'Марка продана ранее. Утилизируйте товар', next: 'scan'
   },
   not_ours: {
@@ -598,11 +646,11 @@ const STATUS_CONFIG = {
     action: 'Утилизировать', voice: 'Марка не принадлежит компании. Утилизируйте товар', next: 'scan'
   },
   no_connection: {
-    bg: '#f59e0b', icon: '📡', title: 'Нет связи', subtitle: 'Повторите попытку позднее',
+    bg: '#f59e0b', icon: '', title: 'Нет связи', subtitle: 'Повторите попытку позднее',
     action: 'Повторить', voice: 'Нет связи с сервером. Повторите попытку позднее', next: 'reload'
   },
   not_in_turnover: {
-    bg: '#0284c7', icon: '', title: 'Код не введен в оборот', subtitle: 'Заявка создана автоматически',
+    bg: '#0284c7', icon: '📧', title: 'Код не введен в оборот', subtitle: 'Заявка создана автоматически',
     action: 'В хелп', voice: 'Код не введен в оборот. Заявка создана', next: 'auto_help'
   },
   ogv_blocked: {
@@ -615,7 +663,6 @@ const STATUS_CONFIG = {
   }
 };
 
-// Хранилище ожидающих товаров
 let pendingItems = JSON.parse(localStorage.getItem('pendingMarks') || '[]');
 
 let html5QrCode = null;
@@ -624,8 +671,20 @@ let lastScannedCode = null;
 let lastScanTime = 0;
 const COOLDOWN_MS = 2500;
 let currentResultCode = '';
+let currentNormalizedCode = '';
 let currentProductName = '';
 let currentStock = '';
+let currentStatus = '';
+let currentNotificationItem = null;
+
+function normalizeCode(code) {
+  if (!code) return '';
+  const trimmed = code.trim();
+  if (trimmed.length > 21) {
+    return trimmed.substring(0, 21);
+  }
+  return trimmed;
+}
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -651,7 +710,7 @@ function updatePendingList() {
   pendingItems.forEach(item => {
     const div = document.createElement('div');
     div.className = `pending-item ${item.type}`;
-    const statusText = item.type === 'help' ? ' Заявка в хелп' : ' Заблокирован ОГВ';
+    const statusText = item.type === 'help' ? '📧 Заявка в хелп' : '⏳ Заблокирован ОГВ';
     const time = new Date(item.timestamp).toLocaleString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
@@ -673,10 +732,10 @@ function showDemoCodes() {
   const statusLabels = {
     available: '🟢 Доступно', 
     expired: '🔴 Просрочено', 
-    written_off: '🔴 Списано ранее',
-    sold: '🔴 Продано ранее', 
+    written_off: ' Списано ранее',
+    sold: ' Продано ранее', 
     not_ours: '🔴 Не наша марка', 
-    no_connection: ' Нет связи',
+    no_connection: '🟡 Нет связи',
     not_in_turnover: '🔵 Не введен в оборот',
     ogv_blocked: '🟣 Заблокирован ОГВ'
   };
@@ -708,11 +767,12 @@ function lookupStatus(code) {
   
   for (const mark of MARKS) {
     if (mark.km === normalized || mark.full === normalized) {
-      console.log('Найдено:', mark.km);
+      console.log('Найдено точное совпадение:', mark.km);
       return { 
         status: mark.status, 
         productName: mark.productName,
-        stock: mark.stock
+        stock: mark.stock,
+        km: mark.km
       };
     }
     if (normalized.startsWith(mark.km) || mark.full.startsWith(normalized)) {
@@ -720,13 +780,14 @@ function lookupStatus(code) {
       return { 
         status: mark.status, 
         productName: mark.productName,
-        stock: mark.stock
+        stock: mark.stock,
+        km: mark.km
       };
     }
   }
   
   console.log('Не найдено в базе');
-  return { status: 'unknown', productName: '', stock: '' };
+  return { status: 'unknown', productName: '', stock: '', km: normalizeCode(normalized) };
 }
 
 function speak(text) {
@@ -840,6 +901,10 @@ async function stopScanner() {
   isScanning = false;
 }
 
+function findPendingByCode(normalizedCode) {
+  return pendingItems.find(p => p.normalizedCode === normalizedCode);
+}
+
 async function onScanSuccess(decodedText) {
   const now = Date.now();
   if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
@@ -852,14 +917,14 @@ async function onScanSuccess(decodedText) {
   const markData = lookupStatus(decodedText);
   const config = STATUS_CONFIG[markData.status];
   currentResultCode = decodedText;
+  currentNormalizedCode = markData.km || normalizeCode(decodedText);
   currentProductName = markData.productName || '';
   currentStock = markData.stock || '';
+  currentStatus = markData.status;
   
-  // Проверяем, есть ли уже в pending
-  const existingPending = pendingItems.find(p => p.code === decodedText);
+  const existingPending = findPendingByCode(currentNormalizedCode);
   
   if (existingPending && (markData.status === 'not_in_turnover' || markData.status === 'ogv_blocked')) {
-    // Повторное сканирование - заявка уже в работе
     showPendingNotification(markData, existingPending);
   } else {
     showResult(config, decodedText);
@@ -874,15 +939,15 @@ function showPendingNotification(markData, pendingItem) {
     : 'Товар уже отложен. Ждите уведомление.';
   
   document.getElementById('screen-result').style.background = '#6b7280';
-  document.getElementById('result-icon').textContent = '⏳';
+  document.getElementById('result-icon').textContent = '';
   document.getElementById('result-title').textContent = 'Уже в работе';
   document.getElementById('result-product').textContent = markData.productName;
-  document.getElementById('result-stock').textContent = markData.stock;
+  document.getElementById('result-stock').textContent = markData.stock ? `Остаток: ${markData.stock}` : '';
   document.getElementById('result-subtitle').textContent = message;
   document.getElementById('result-code').textContent = currentResultCode;
   
   const copyBtn = document.getElementById('btn-copy');
-  copyBtn.textContent = ' Скопировать код';
+  copyBtn.textContent = '📋 Скопировать код';
   copyBtn.classList.remove('copied');
   copyBtn.onclick = () => {
     navigator.clipboard.writeText(currentResultCode).then(() => {
@@ -937,14 +1002,14 @@ function handleAction(config) {
   if (config.next === 'writeoff') {
     showScreen('screen-writeoff');
   } else if (config.next === 'auto_help') {
-    // Автоматическое создание заявки
-    addToPending('help', currentProductName, currentResultCode);
-    showQuickNotification('Заявка создана', 'Товар добавлен в список ожидания');
+    addToPending('help', currentProductName, currentResultCode, currentNormalizedCode);
+    showQuickNotification('📧 Заявка создана', 'Товар добавлен в список ожидания');
+    schedulePushNotification(10000);
     setTimeout(() => resetAndStart(), 1500);
   } else if (config.next === 'auto_ogv') {
-    // Автоматическое добавление в отложенные
-    addToPending('ogv', currentProductName, currentResultCode);
-    showQuickNotification('Товар отложен', 'Ждите уведомления об изменении статуса');
+    addToPending('ogv', currentProductName, currentResultCode, currentNormalizedCode);
+    showQuickNotification('⏳ Товар отложен', 'Ждите уведомления об изменении статуса');
+    schedulePushNotification(10000);
     setTimeout(() => resetAndStart(), 1500);
   } else if (config.next === 'reload') {
     window.location.reload();
@@ -953,19 +1018,27 @@ function handleAction(config) {
   }
 }
 
-function addToPending(type, productName, code) {
+function addToPending(type, productName, code, normalizedCode) {
+  const existing = findPendingByCode(normalizedCode);
+  if (existing) {
+    console.log('Дубликат найден, заявка не создаётся:', normalizedCode);
+    return false;
+  }
+  
   const item = {
     type: type,
     productName: productName,
     code: code,
+    normalizedCode: normalizedCode,
     timestamp: Date.now()
   };
   pendingItems.push(item);
   localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
+  console.log('Добавлено в pending:', normalizedCode);
+  return true;
 }
 
 function showQuickNotification(title, text) {
-  // Показываем короткое уведомление перед возвратом к скану
   const notification = document.createElement('div');
   notification.style.cssText = `
     position: fixed;
@@ -992,29 +1065,86 @@ function showQuickNotification(title, text) {
     notification.style.opacity = '0';
     notification.style.transition = 'opacity 0.3s';
     setTimeout(() => notification.remove(), 300);
-  }, 1200);
+  }, 1500);
+}
+
+let pushTimeout = null;
+
+function schedulePushNotification(delayMs) {
+  if (pushTimeout) clearTimeout(pushTimeout);
+  pushTimeout = setTimeout(() => {
+    if (pendingItems.length > 0) {
+      showNotificationScreen();
+    }
+  }, delayMs);
 }
 
 function showNotificationScreen() {
-  // Имитация пуш-уведомления - берем случайный товар из pending
   if (pendingItems.length === 0) return;
   
-  const randomIndex = Math.floor(Math.random() * pendingItems.length);
-  const item = pendingItems[randomIndex];
+  currentNotificationItem = pendingItems[0];
   
   const body = document.getElementById('notification-body');
+  const statusMessage = currentNotificationItem.type === 'help' 
+    ? '✅ Заявка обработана. Проверьте товар.' 
+    : '✅ Статус марки изменён. Выставьте товар в торговый зал.';
+  
   body.innerHTML = `
     <div class="notification-product">
-      <div class="notification-product-name">${item.productName}</div>
-      <div class="notification-product-status">
-        ${item.type === 'help' ? '✅ Заявка обработана. Проверьте товар.' : '✅ Статус изменен. Можно продолжить работу.'}
-      </div>
+      <div class="notification-product-name">${currentNotificationItem.productName}</div>
+      <div class="notification-product-status">${statusMessage}</div>
+      <div style="font-size:12px;opacity:0.7;margin-top:8px">КМ: ${currentNotificationItem.normalizedCode}</div>
     </div>
   `;
   
   showScreen('screen-notification');
-  vibrate([200, 100, 200]);
+  vibrate([200, 100, 200, 100, 300]);
+  
+  speak('Уведомление. ' + currentNotificationItem.productName + '. ' + (currentNotificationItem.type === 'help' ? 'Заявка обработана' : 'Статус изменён. Выставьте товар в зал'));
 }
+
+document.getElementById('btn-place-in-hall').onclick = () => {
+  if (currentNotificationItem) {
+    // Удаляем товар из pending
+    pendingItems.shift();
+    localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
+    
+    showQuickNotification('✅ Товар выставлен в зал', 'Статус обновлен');
+    speak('Товар выставлен в торговый зал');
+    
+    // Если это был ОГВ - через 15 секунд снова добавляем в pending (симуляция повторной блокировки)
+    if (currentNotificationItem.type === 'ogv') {
+      setTimeout(() => {
+        addToPending('ogv', currentNotificationItem.productName, currentNotificationItem.code, currentNotificationItem.normalizedCode);
+        schedulePushNotification(10000);
+        showQuickNotification('⏳ Код снова заблокирован ОГВ', 'Ждите уведомления');
+      }, 15000);
+    }
+    
+    currentNotificationItem = null;
+    showScreen('screen-start');
+  }
+};
+
+document.getElementById('btn-notification-later').onclick = () => {
+  currentNotificationItem = null;
+  showScreen('screen-start');
+};
+
+document.getElementById('btn-test-push').onclick = () => {
+  if (pendingItems.length === 0) {
+    const testItem = {
+      type: 'ogv',
+      productName: 'Тестовый товар (демо)',
+      code: 'TEST00000000000000000000',
+      normalizedCode: 'TEST00000000000000000000',
+      timestamp: Date.now()
+    };
+    pendingItems.push(testItem);
+    localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
+  }
+  showNotificationScreen();
+};
 
 document.getElementById('btn-writeoff-confirm').onclick = () => {
   vibrate([100, 50, 100, 50, 200]);
@@ -1026,12 +1156,7 @@ document.getElementById('btn-writeoff-cancel').onclick = () => {
   resetAndStart();
 };
 
-document.getElementById('btn-notification-close').onclick = () => {
-  // Удаляем товар из pending после просмотра уведомления
-  if (pendingItems.length > 0) {
-    pendingItems.shift();
-    localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-  }
+document.getElementById('btn-back-result').onclick = () => {
   showScreen('screen-start');
 };
 
@@ -1052,14 +1177,6 @@ if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
 }
 
-// Имитация пуш-уведомления через 30 секунд после запуска (для демо)
-setTimeout(() => {
-  if (pendingItems.length > 0 && Math.random() > 0.5) {
-    showNotificationScreen();
-  }
-}, 30000);
-
-// Обновляем список при загрузке
 updatePendingList();
 </script>
 </body>
