@@ -117,6 +117,7 @@
   }
   .pending-item.help { border-left-color: #0284c7; }
   .pending-item.ogv { border-left-color: #7c3aed; }
+  .pending-item.notified { border-left-color: #16a34a; }
   .pending-status {
     font-size: 12px;
     font-weight: 700;
@@ -191,15 +192,35 @@
 
   #screen-scan { background: #000; }
   .scan-header {
-    padding: 16px 20px;
-    background: rgba(0,0,0,0.7);
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.85);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    text-align: center;
-    font-size: 17px;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     z-index: 10;
+    gap: 12px;
   }
+  .scan-header-title {
+    font-size: 16px;
+    font-weight: 600;
+    flex: 1;
+    text-align: center;
+  }
+  .btn-scan-back {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-scan-back:active { transform: scale(0.95); background: rgba(255,255,255,0.25); }
+  
   #reader { flex: 1; position: relative; overflow: hidden; }
   #reader video {
     width: 100% !important;
@@ -355,21 +376,6 @@
     margin-bottom: 12px;
   }
   .btn-action:active { transform: scale(0.97); }
-  .btn-back-result {
-    background: transparent;
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.4);
-    padding: 14px 32px;
-    font-size: 16px;
-    font-weight: 600;
-    border-radius: 14px;
-    cursor: pointer;
-    min-width: 220px;
-  }
-  .btn-back-result:active { 
-    transform: scale(0.97); 
-    background: rgba(255,255,255,0.1);
-  }
 
   #screen-writeoff {
     background: #2a0a0a;
@@ -431,22 +437,10 @@
     from { transform: translateY(-100%); }
     to { transform: translateY(0); }
   }
-  .notification-icon {
-    font-size: 32px;
-  }
-  .notification-content {
-    flex: 1;
-  }
-  .notification-title {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-  .notification-text {
-    font-size: 14px;
-    opacity: 0.9;
-    line-height: 1.3;
-  }
+  .notification-icon { font-size: 32px; }
+  .notification-content { flex: 1; }
+  .notification-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .notification-text { font-size: 14px; opacity: 0.9; line-height: 1.3; }
   .notification-body {
     padding: 24px 20px;
     flex: 1;
@@ -458,33 +452,15 @@
     padding: 16px;
     margin-bottom: 12px;
   }
-  .notification-product-name {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .notification-product-status {
-    font-size: 14px;
-    opacity: 0.9;
-  }
+  .notification-product-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .notification-product-status { font-size: 14px; opacity: 0.9; }
   .notification-buttons {
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
-  .btn-place-in-hall {
-    background: #16a34a;
-    color: #fff;
-    border: none;
-    padding: 18px;
-    font-size: 18px;
-    font-weight: 700;
-    border-radius: 14px;
-    cursor: pointer;
-  }
-  .btn-place-in-hall:active { transform: scale(0.97); }
-  .btn-notification-later {
+  .btn-notification-close {
     background: rgba(255,255,255,0.2);
     color: #fff;
     border: none;
@@ -493,6 +469,22 @@
     font-weight: 600;
     border-radius: 14px;
     cursor: pointer;
+  }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e3a8a;
+    color: #fff;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    z-index: 2000;
+    animation: slideDown 0.3s ease-out;
+    max-width: 90%;
+    text-align: center;
   }
 </style>
 </head>
@@ -504,7 +496,7 @@
     <p>Сканирование DataMatrix · Честный Знак</p>
     <button class="btn-start" id="btn-start">Начать работу</button>
     <button class="btn-demo" id="btn-demo">Показать тестовые коды</button>
-    <button class="btn-test-push" id="btn-test-push"> Тест пуш-уведомления</button>
+    <button class="btn-test-push" id="btn-test-push">🔔 Тест пуша (30 сек)</button>
   </div>
   <div class="pending-section">
     <div class="pending-header">
@@ -522,7 +514,11 @@
 </div>
 
 <div id="screen-scan" class="screen">
-  <div class="scan-header">Наведите камеру на марку</div>
+  <div class="scan-header">
+    <button class="btn-scan-back" id="btn-scan-back">← К списку</button>
+    <div class="scan-header-title">Наведите камеру на марку</div>
+    <div style="width:80px"></div>
+  </div>
   <div id="reader">
     <div class="scan-overlay">
       <div class="scan-frame"></div>
@@ -541,13 +537,12 @@
   <div class="result-stock" id="result-stock"></div>
   <div class="result-subtitle" id="result-subtitle"></div>
   <div class="result-code" id="result-code"></div>
-  <button class="btn-copy" id="btn-copy"> Скопировать код</button>
+  <button class="btn-copy" id="btn-copy">📋 Скопировать код</button>
   <button class="btn-action" id="btn-action"></button>
-  <button class="btn-back-result" id="btn-back-result">← К списку</button>
 </div>
 
 <div id="screen-writeoff" class="screen">
-  <h2>️ Списание товара</h2>
+  <h2>⚠️ Списание товара</h2>
   <p>Подтвердите списание просроченного товара в системе</p>
   <div class="writeoff-buttons">
     <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
@@ -557,21 +552,23 @@
 
 <div id="screen-notification" class="screen">
   <div class="notification-banner">
-    <div class="notification-icon">🔔</div>
+    <div class="notification-icon"></div>
     <div class="notification-content">
       <div class="notification-title">Уведомление</div>
-      <div class="notification-text">Проверьте товары</div>
+      <div class="notification-text">Проверьте товар</div>
     </div>
   </div>
   <div class="notification-body" id="notification-body"></div>
   <div class="notification-buttons">
-    <button class="btn-place-in-hall" id="btn-place-in-hall">✅ Выставить в зал</button>
-    <button class="btn-notification-later" id="btn-notification-later">Позже</button>
+    <button class="btn-notification-close" id="btn-notification-close">Понятно</button>
   </div>
 </div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
+// ============================================================
+// ДАННЫЕ МАРКОК
+// ============================================================
 const MARKS = [
   {
     km: "04620081141216VX39Rfe",
@@ -650,12 +647,12 @@ const STATUS_CONFIG = {
     action: 'Повторить', voice: 'Нет связи с сервером. Повторите попытку позднее', next: 'reload'
   },
   not_in_turnover: {
-    bg: '#0284c7', icon: '📧', title: 'Код не введен в оборот', subtitle: 'Заявка создана автоматически',
-    action: 'В хелп', voice: 'Код не введен в оборот. Заявка создана', next: 'auto_help'
+    bg: '#0284c7', icon: '📧', title: 'Код не введен в оборот', subtitle: 'Требуется заявка в техподдержку',
+    action: 'В хелп', voice: 'Код не введен в оборот. Создайте заявку', next: 'add_pending'
   },
   ogv_blocked: {
-    bg: '#7c3aed', icon: '⏳', title: 'Код заблокирован ОГВ', subtitle: 'Товар отложен, ждите уведомление',
-    action: 'Отложить', voice: 'Код заблокирован. Товар отложен', next: 'auto_ogv'
+    bg: '#7c3aed', icon: '⏳', title: 'Код заблокирован ОГВ', subtitle: 'Отложите товар',
+    action: 'Отложить', voice: 'Код заблокирован органами госвласти. Отложите товар', next: 'add_pending'
   },
   unknown: {
     bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе',
@@ -663,6 +660,10 @@ const STATUS_CONFIG = {
   }
 };
 
+// ============================================================
+// PENDING — список ожидающих товаров
+// step: 'waiting' → ждём пуш, 'notified' → пуш пришёл, готов к выставлению
+// ============================================================
 let pendingItems = JSON.parse(localStorage.getItem('pendingMarks') || '[]');
 
 let html5QrCode = null;
@@ -675,30 +676,27 @@ let currentNormalizedCode = '';
 let currentProductName = '';
 let currentStock = '';
 let currentStatus = '';
-let currentNotificationItem = null;
+let currentPendingItem = null; // для экрана "выставьте в зал"
+
+// Таймеры пушей: ключ = normalizedCode, значение = timeout id
+const pushTimers = {};
 
 function normalizeCode(code) {
   if (!code) return '';
   const trimmed = code.trim();
-  if (trimmed.length > 21) {
-    return trimmed.substring(0, 21);
-  }
+  if (trimmed.length > 21) return trimmed.substring(0, 21);
   return trimmed;
 }
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  
-  if (id === 'screen-start') {
-    updatePendingList();
-  }
+  if (id === 'screen-start') updatePendingList();
 }
 
 function updatePendingList() {
   const list = document.getElementById('pending-list');
   const count = document.getElementById('pending-count');
-  
   count.textContent = pendingItems.length;
   
   if (pendingItems.length === 0) {
@@ -709,13 +707,18 @@ function updatePendingList() {
   list.innerHTML = '';
   pendingItems.forEach(item => {
     const div = document.createElement('div');
-    div.className = `pending-item ${item.type}`;
-    const statusText = item.type === 'help' ? '📧 Заявка в хелп' : '⏳ Заблокирован ОГВ';
+    const stepClass = item.step === 'notified' ? 'notified' : item.type;
+    div.className = `pending-item ${stepClass}`;
+    
+    let statusText = '';
+    if (item.type === 'help') {
+      statusText = item.step === 'notified' ? '✅ Заявка обработана — выставить в зал' : '📧 Заявка в хелп';
+    } else {
+      statusText = item.step === 'notified' ? '✅ Статус изменён — выставить в зал' : '⏳ Заблокирован ОГВ';
+    }
+    
     const time = new Date(item.timestamp).toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
     });
     div.innerHTML = `
       <div class="pending-status">${statusText}</div>
@@ -730,16 +733,10 @@ function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
   const statusLabels = {
-    available: '🟢 Доступно', 
-    expired: '🔴 Просрочено', 
-    written_off: ' Списано ранее',
-    sold: ' Продано ранее', 
-    not_ours: '🔴 Не наша марка', 
-    no_connection: '🟡 Нет связи',
-    not_in_turnover: '🔵 Не введен в оборот',
-    ogv_blocked: '🟣 Заблокирован ОГВ'
+    available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее',
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи',
+    not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ'
   };
-  
   for (const mark of MARKS) {
     const item = document.createElement('div');
     item.className = 'demo-item';
@@ -764,29 +761,17 @@ function showDemoCodes() {
 function lookupStatus(code) {
   const normalized = code.trim();
   console.log('Сканирован код:', normalized);
-  
   for (const mark of MARKS) {
     if (mark.km === normalized || mark.full === normalized) {
-      console.log('Найдено точное совпадение:', mark.km);
-      return { 
-        status: mark.status, 
-        productName: mark.productName,
-        stock: mark.stock,
-        km: mark.km
-      };
+      console.log('Найдено:', mark.km);
+      return { status: mark.status, productName: mark.productName, stock: mark.stock, km: mark.km };
     }
     if (normalized.startsWith(mark.km) || mark.full.startsWith(normalized)) {
       console.log('Найдено по префиксу:', mark.km);
-      return { 
-        status: mark.status, 
-        productName: mark.productName,
-        stock: mark.stock,
-        km: mark.km
-      };
+      return { status: mark.status, productName: mark.productName, stock: mark.stock, km: mark.km };
     }
   }
-  
-  console.log('Не найдено в базе');
+  console.log('Не найдено');
   return { status: 'unknown', productName: '', stock: '', km: normalizeCode(normalized) };
 }
 
@@ -805,28 +790,32 @@ function vibrate(pattern) {
   if ('vibrate' in navigator) navigator.vibrate(pattern);
 }
 
+function showToast(title, text, duration = 1500) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<div style="font-weight:700;margin-bottom:4px">${title}</div><div style="font-size:14px;opacity:0.9">${text}</div>`;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
 async function resetScanner() {
   if (html5QrCode) {
     try {
-      if (isScanning) {
-        await html5QrCode.stop();
-      }
+      if (isScanning) await html5QrCode.stop();
       const reader = document.getElementById('reader');
-      while (reader.firstChild) {
-        reader.removeChild(reader.firstChild);
-      }
+      while (reader.firstChild) reader.removeChild(reader.firstChild);
       reader.innerHTML = `
-        <div class="scan-overlay">
-          <div class="scan-frame"></div>
-        </div>
+        <div class="scan-overlay"><div class="scan-frame"></div></div>
         <div class="scan-loader" id="scan-loader">
-          <div class="spinner"></div>
-          <span>Запуск камеры...</span>
-        </div>
-      `;
-    } catch (e) {
-      console.error('Ошибка при сбросе сканера:', e);
-    }
+          <div class="spinner"></div><span>Запуск камеры...</span>
+        </div>`;
+    } catch (e) { console.error(e); }
     html5QrCode = null;
   }
   isScanning = false;
@@ -834,17 +823,14 @@ async function resetScanner() {
 
 async function startScanner() {
   if (isScanning) return;
-  
   showScreen('screen-scan');
   const loader = document.getElementById('scan-loader');
   if (loader) {
     loader.classList.remove('hidden');
     loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
   }
-
   try {
     html5QrCode = new Html5Qrcode("reader", { verbose: false });
-
     await html5QrCode.start(
       { facingMode: "environment" },
       {
@@ -861,14 +847,13 @@ async function startScanner() {
         experimentalFeatures: { useBarCodeDetectorIfAvailable: true }
       },
       onScanSuccess,
-      onScanFailure
+      () => {}
     );
-
     isScanning = true;
     const loaderEl = document.getElementById('scan-loader');
     if (loaderEl) loaderEl.classList.add('hidden');
   } catch (err) {
-    console.error('Ошибка запуска камеры:', err);
+    console.error('Ошибка камеры:', err);
     const loaderEl = document.getElementById('scan-loader');
     if (loaderEl) {
       loaderEl.innerHTML = `
@@ -877,8 +862,7 @@ async function startScanner() {
           <div>Не удалось запустить камеру</div>
           <div style="font-size:14px;opacity:0.7;margin-top:8px">${err.message}</div>
           <button onclick="resetAndStart()">Повторить</button>
-        </div>
-      `;
+        </div>`;
     }
   }
 }
@@ -888,15 +872,9 @@ async function resetAndStart() {
   setTimeout(() => startScanner(), 300);
 }
 
-function onScanFailure(error) {}
-
 async function stopScanner() {
   if (html5QrCode && isScanning) {
-    try {
-      await html5QrCode.stop();
-    } catch (e) {
-      console.error('Ошибка остановки:', e);
-    }
+    try { await html5QrCode.stop(); } catch (e) {}
   }
   isScanning = false;
 }
@@ -905,6 +883,56 @@ function findPendingByCode(normalizedCode) {
   return pendingItems.find(p => p.normalizedCode === normalizedCode);
 }
 
+function removePendingByCode(normalizedCode) {
+  pendingItems = pendingItems.filter(p => p.normalizedCode !== normalizedCode);
+  localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
+  // Очищаем таймер если есть
+  if (pushTimers[normalizedCode]) {
+    clearTimeout(pushTimers[normalizedCode]);
+    delete pushTimers[normalizedCode];
+  }
+}
+
+// ============================================================
+// ПУШ — через 30 секунд после добавления в pending
+// Меняет step с 'waiting' на 'notified'
+// ============================================================
+function schedulePush(normalizedCode, delayMs = 30000) {
+  if (pushTimers[normalizedCode]) clearTimeout(pushTimers[normalizedCode]);
+  pushTimers[normalizedCode] = setTimeout(() => {
+    const item = findPendingByCode(normalizedCode);
+    if (item && item.step === 'waiting') {
+      item.step = 'notified';
+      localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
+      console.log('Пуш: step изменён на notified для', normalizedCode);
+      // Показываем пуш-уведомление
+      showPushNotification(item);
+    }
+    delete pushTimers[normalizedCode];
+  }, delayMs);
+}
+
+function showPushNotification(item) {
+  const body = document.getElementById('notification-body');
+  const message = item.type === 'help'
+    ? '✅ Заявка обработана. Отсканируйте марку — статус изменится на «Выставьте в торговый зал».'
+    : '✅ Статус марки изменён. Отсканируйте марку — статус изменится на «Выставьте в торговый зал».';
+  
+  body.innerHTML = `
+    <div class="notification-product">
+      <div class="notification-product-name">${item.productName}</div>
+      <div class="notification-product-status">${message}</div>
+      <div style="font-size:12px;opacity:0.7;margin-top:8px">КМ: ${item.normalizedCode}</div>
+    </div>
+  `;
+  showScreen('screen-notification');
+  vibrate([200, 100, 200, 100, 300]);
+  speak('Уведомление. ' + item.productName + '. ' + (item.type === 'help' ? 'Заявка обработана' : 'Статус изменён'));
+}
+
+// ============================================================
+// СКАНИРОВАНИЕ — основная логика
+// ============================================================
 async function onScanSuccess(decodedText) {
   const now = Date.now();
   if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
@@ -915,57 +943,40 @@ async function onScanSuccess(decodedText) {
   await stopScanner();
 
   const markData = lookupStatus(decodedText);
-  const config = STATUS_CONFIG[markData.status];
   currentResultCode = decodedText;
   currentNormalizedCode = markData.km || normalizeCode(decodedText);
   currentProductName = markData.productName || '';
   currentStock = markData.stock || '';
   currentStatus = markData.status;
-  
-  const existingPending = findPendingByCode(currentNormalizedCode);
-  
-  if (existingPending && (markData.status === 'not_in_turnover' || markData.status === 'ogv_blocked')) {
-    showPendingNotification(markData, existingPending);
+
+  // Проверяем, есть ли товар в pending
+  const pendingItem = findPendingByCode(currentNormalizedCode);
+
+  if (pendingItem) {
+    // Товар уже в pending
+    if (pendingItem.step === 'waiting') {
+      // Пуш ещё не пришёл
+      showResult({
+        bg: '#6b7280', icon: '⏳', title: 'Задание в работе',
+        subtitle: 'Ждите уведомления', action: 'ОК', voice: 'Задание уже в работе. Ждите уведомление.', next: 'scan'
+      }, decodedText);
+    } else if (pendingItem.step === 'notified') {
+      // Пуш пришёл — показываем "Выставьте в зал"
+      currentPendingItem = pendingItem;
+      showResult({
+        bg: '#16a34a', icon: '✅', title: 'Выставьте в торговый зал',
+        subtitle: pendingItem.type === 'help' 
+          ? 'Заявка обработана. Товар готов к продаже.' 
+          : 'Статус марки изменён. Товар готов к продаже.',
+        action: 'Выставлено', voice: 'Выставьте товар в торговый зал', next: 'remove_pending'
+      }, decodedText);
+    }
   } else {
+    // Товар не в pending — показываем обычный результат
+    const config = STATUS_CONFIG[markData.status];
     showResult(config, decodedText);
     speak(config.voice);
   }
-}
-
-function showPendingNotification(markData, pendingItem) {
-  const type = markData.status === 'not_in_turnover' ? 'help' : 'ogv';
-  const message = type === 'help' 
-    ? 'Заявка уже в работе. Ждите уведомление.' 
-    : 'Товар уже отложен. Ждите уведомление.';
-  
-  document.getElementById('screen-result').style.background = '#6b7280';
-  document.getElementById('result-icon').textContent = '';
-  document.getElementById('result-title').textContent = 'Уже в работе';
-  document.getElementById('result-product').textContent = markData.productName;
-  document.getElementById('result-stock').textContent = markData.stock ? `Остаток: ${markData.stock}` : '';
-  document.getElementById('result-subtitle').textContent = message;
-  document.getElementById('result-code').textContent = currentResultCode;
-  
-  const copyBtn = document.getElementById('btn-copy');
-  copyBtn.textContent = '📋 Скопировать код';
-  copyBtn.classList.remove('copied');
-  copyBtn.onclick = () => {
-    navigator.clipboard.writeText(currentResultCode).then(() => {
-      copyBtn.textContent = '✓ Скопировано';
-      copyBtn.classList.add('copied');
-      setTimeout(() => {
-        copyBtn.textContent = '📋 Скопировать код';
-        copyBtn.classList.remove('copied');
-      }, 1500);
-    });
-  };
-
-  const btn = document.getElementById('btn-action');
-  btn.textContent = 'ОК';
-  btn.onclick = () => resetAndStart();
-
-  showScreen('screen-result');
-  speak(message);
 }
 
 function showResult(config, code) {
@@ -985,7 +996,7 @@ function showResult(config, code) {
       copyBtn.textContent = '✓ Скопировано';
       copyBtn.classList.add('copied');
       setTimeout(() => {
-        copyBtn.textContent = ' Скопировать код';
+        copyBtn.textContent = '📋 Скопировать код';
         copyBtn.classList.remove('copied');
       }, 1500);
     });
@@ -993,24 +1004,32 @@ function showResult(config, code) {
 
   const btn = document.getElementById('btn-action');
   btn.textContent = config.action;
-  btn.onclick = () => handleAction(config);
+  btn.onclick = () => handleResultAction(config);
 
   showScreen('screen-result');
+  if (config.voice) speak(config.voice);
 }
 
-function handleAction(config) {
+function handleResultAction(config) {
   if (config.next === 'writeoff') {
     showScreen('screen-writeoff');
-  } else if (config.next === 'auto_help') {
-    addToPending('help', currentProductName, currentResultCode, currentNormalizedCode);
-    showQuickNotification('📧 Заявка создана', 'Товар добавлен в список ожидания');
-    schedulePushNotification(10000);
-    setTimeout(() => resetAndStart(), 1500);
-  } else if (config.next === 'auto_ogv') {
-    addToPending('ogv', currentProductName, currentResultCode, currentNormalizedCode);
-    showQuickNotification('⏳ Товар отложен', 'Ждите уведомления об изменении статуса');
-    schedulePushNotification(10000);
-    setTimeout(() => resetAndStart(), 1500);
+  } else if (config.next === 'add_pending') {
+    // Добавляем в pending и запускаем таймер пуша
+    addToPending(currentStatus === 'ogv_blocked' ? 'ogv' : 'help', 
+                 currentProductName, currentResultCode, currentNormalizedCode);
+    schedulePush(currentNormalizedCode, 30000); // 30 секунд
+    showToast(
+      currentStatus === 'ogv_blocked' ? '⏳ Товар отложен' : '📧 Заявка создана',
+      'Пуш придёт через 30 секунд'
+    );
+    setTimeout(() => resetAndStart(), 1200);
+  } else if (config.next === 'remove_pending') {
+    // Удаляем из pending — цикл завершён
+    removePendingByCode(currentNormalizedCode);
+    showToast('✅ Товар выставлен в зал', 'Задание выполнено');
+    speak('Товар выставлен в торговый зал');
+    currentPendingItem = null;
+    setTimeout(() => resetAndStart(), 1200);
   } else if (config.next === 'reload') {
     window.location.reload();
   } else if (config.next === 'scan') {
@@ -1021,16 +1040,16 @@ function handleAction(config) {
 function addToPending(type, productName, code, normalizedCode) {
   const existing = findPendingByCode(normalizedCode);
   if (existing) {
-    console.log('Дубликат найден, заявка не создаётся:', normalizedCode);
+    console.log('Дубликат:', normalizedCode);
     return false;
   }
-  
   const item = {
     type: type,
     productName: productName,
     code: code,
     normalizedCode: normalizedCode,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    step: 'waiting'
   };
   pendingItems.push(item);
   localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
@@ -1038,112 +1057,11 @@ function addToPending(type, productName, code, normalizedCode) {
   return true;
 }
 
-function showQuickNotification(title, text) {
-  const notification = document.createElement('div');
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1e3a8a;
-    color: #fff;
-    padding: 16px 24px;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    z-index: 1000;
-    animation: slideDown 0.3s ease-out;
-    max-width: 90%;
-    text-align: center;
-  `;
-  notification.innerHTML = `
-    <div style="font-weight: 700; margin-bottom: 4px;">${title}</div>
-    <div style="font-size: 14px; opacity: 0.9;">${text}</div>
-  `;
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    notification.style.transition = 'opacity 0.3s';
-    setTimeout(() => notification.remove(), 300);
-  }, 1500);
-}
-
-let pushTimeout = null;
-
-function schedulePushNotification(delayMs) {
-  if (pushTimeout) clearTimeout(pushTimeout);
-  pushTimeout = setTimeout(() => {
-    if (pendingItems.length > 0) {
-      showNotificationScreen();
-    }
-  }, delayMs);
-}
-
-function showNotificationScreen() {
-  if (pendingItems.length === 0) return;
-  
-  currentNotificationItem = pendingItems[0];
-  
-  const body = document.getElementById('notification-body');
-  const statusMessage = currentNotificationItem.type === 'help' 
-    ? '✅ Заявка обработана. Проверьте товар.' 
-    : '✅ Статус марки изменён. Выставьте товар в торговый зал.';
-  
-  body.innerHTML = `
-    <div class="notification-product">
-      <div class="notification-product-name">${currentNotificationItem.productName}</div>
-      <div class="notification-product-status">${statusMessage}</div>
-      <div style="font-size:12px;opacity:0.7;margin-top:8px">КМ: ${currentNotificationItem.normalizedCode}</div>
-    </div>
-  `;
-  
-  showScreen('screen-notification');
-  vibrate([200, 100, 200, 100, 300]);
-  
-  speak('Уведомление. ' + currentNotificationItem.productName + '. ' + (currentNotificationItem.type === 'help' ? 'Заявка обработана' : 'Статус изменён. Выставьте товар в зал'));
-}
-
-document.getElementById('btn-place-in-hall').onclick = () => {
-  if (currentNotificationItem) {
-    // Удаляем товар из pending
-    pendingItems.shift();
-    localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-    
-    showQuickNotification('✅ Товар выставлен в зал', 'Статус обновлен');
-    speak('Товар выставлен в торговый зал');
-    
-    // Если это был ОГВ - через 15 секунд снова добавляем в pending (симуляция повторной блокировки)
-    if (currentNotificationItem.type === 'ogv') {
-      setTimeout(() => {
-        addToPending('ogv', currentNotificationItem.productName, currentNotificationItem.code, currentNotificationItem.normalizedCode);
-        schedulePushNotification(10000);
-        showQuickNotification('⏳ Код снова заблокирован ОГВ', 'Ждите уведомления');
-      }, 15000);
-    }
-    
-    currentNotificationItem = null;
-    showScreen('screen-start');
-  }
-};
-
-document.getElementById('btn-notification-later').onclick = () => {
-  currentNotificationItem = null;
+// ============================================================
+// КНОПКИ
+// ============================================================
+document.getElementById('btn-scan-back').onclick = () => {
   showScreen('screen-start');
-};
-
-document.getElementById('btn-test-push').onclick = () => {
-  if (pendingItems.length === 0) {
-    const testItem = {
-      type: 'ogv',
-      productName: 'Тестовый товар (демо)',
-      code: 'TEST00000000000000000000',
-      normalizedCode: 'TEST00000000000000000000',
-      timestamp: Date.now()
-    };
-    pendingItems.push(testItem);
-    localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-  }
-  showNotificationScreen();
 };
 
 document.getElementById('btn-writeoff-confirm').onclick = () => {
@@ -1151,13 +1069,26 @@ document.getElementById('btn-writeoff-confirm').onclick = () => {
   speak('Списание подтверждено');
   resetAndStart();
 };
+document.getElementById('btn-writeoff-cancel').onclick = () => resetAndStart();
 
-document.getElementById('btn-writeoff-cancel').onclick = () => {
-  resetAndStart();
+document.getElementById('btn-notification-close').onclick = () => {
+  showScreen('screen-start');
 };
 
-document.getElementById('btn-back-result').onclick = () => {
-  showScreen('screen-start');
+document.getElementById('btn-test-push').onclick = () => {
+  // Находим первый товар в pending со step='waiting' и сразу делаем notified
+  const item = pendingItems.find(p => p.step === 'waiting');
+  if (item) {
+    if (pushTimers[item.normalizedCode]) {
+      clearTimeout(pushTimers[item.normalizedCode]);
+      delete pushTimers[item.normalizedCode];
+    }
+    item.step = 'notified';
+    localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
+    showPushNotification(item);
+  } else {
+    showToast('Нет ожидающих товаров', 'Отсканируйте марку ОГВ или хелп');
+  }
 };
 
 document.getElementById('btn-start').onclick = () => {
