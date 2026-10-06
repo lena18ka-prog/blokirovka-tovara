@@ -74,6 +74,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
   }
   .pending-count {
     background: #f59e0b;
@@ -83,6 +84,18 @@
     font-size: 14px;
     font-weight: 700;
   }
+  .btn-clear {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-left: auto;
+  }
+  .btn-clear:active { background: rgba(239, 68, 68, 0.4); }
   .pending-list {
     display: flex;
     flex-direction: column;
@@ -409,6 +422,7 @@
     <div class="pending-header">
       Ожидают решения
       <span class="pending-count" id="pending-count">0</span>
+      <button class="btn-clear" id="btn-clear">Очистить</button>
     </div>
     <div class="pending-list" id="pending-list"></div>
   </div>
@@ -438,7 +452,7 @@
   </div>
 
   <div class="overlay overlay-writeoff" id="overlay-writeoff">
-    <h2>️ Списание товара</h2>
+    <h2>⚠️ Списание товара</h2>
     <p>Подтвердите списание просроченного товара</p>
     <div class="writeoff-buttons">
       <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
@@ -448,7 +462,7 @@
 
   <div class="overlay overlay-notification" id="overlay-notification">
     <div class="notification-banner">
-      <div class="notification-icon">🔔</div>
+      <div class="notification-icon"></div>
       <div class="notification-content">
         <div class="notification-title">Уведомление</div>
         <div class="notification-text">Проверьте товар</div>
@@ -467,9 +481,6 @@
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-// ============================================================
-// ДАННЫЕ
-// ============================================================
 const MARKS = [
   { km: "04620081141216VX39Rfe", full: "04620081141216VX39RfeAAAAdKhW", status: "ogv_blocked", productName: "ХИТС Бирюзовый DM Стик (ФМ): 10/500", stock: "12 шт." },
   { km: "00000046218636j<St'eH", full: "00000046218636j<St'eHAC3AbwCy", status: "not_in_turnover", productName: "ВОГ СС Блю Сигареты МРЦ172(БАТ):10/500", stock: "5 шт." },
@@ -482,7 +493,7 @@ const MARKS = [
 
 const STATUS_CONFIG = {
   available: { bg: '#16a34a', icon: '✅', title: 'Доступно', subtitle: 'Выставьте в зал', action: 'ОК', voice: 'Товар доступен к продаже', next: 'hide' },
-  expired: { bg: '#dc2626', icon: '', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
+  expired: { bg: '#dc2626', icon: '⛔', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
   written_off: { bg: '#dc2626', icon: '🚫', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'hide' },
   sold: { bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка продана ранее', next: 'hide' },
   not_ours: { bg: '#dc2626', icon: '❌', title: 'Не наша марка', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка не принадлежит компании', next: 'hide' },
@@ -492,9 +503,6 @@ const STATUS_CONFIG = {
   unknown: { bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе', action: 'ОК', voice: 'Марка не найдена', next: 'hide' }
 };
 
-// ============================================================
-// СОСТОЯНИЕ
-// ============================================================
 let pendingItems = JSON.parse(localStorage.getItem('pendingMarks') || '[]');
 let html5QrCode = null;
 let cameraRunning = false;
@@ -509,9 +517,6 @@ let currentStock = '';
 let currentStatus = '';
 let pushTimers = {};
 
-// ============================================================
-// УТИЛИТЫ
-// ============================================================
 function normalizeCode(code) {
   if (!code) return '';
   const t = code.trim();
@@ -557,9 +562,6 @@ function showToast(title, text) {
   }, 2000);
 }
 
-// ============================================================
-// УПРАВЛЕНИЕ ОВЕРЛЕЯМИ
-// ============================================================
 function hideAllOverlays() {
   document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
 }
@@ -575,7 +577,7 @@ function showOverlayResult(config) {
   document.getElementById('ov-code').textContent = currentCode;
 
   const copyBtn = document.getElementById('btn-copy');
-  copyBtn.textContent = ' Скопировать код';
+  copyBtn.textContent = '📋 Скопировать код';
   copyBtn.onclick = () => {
     navigator.clipboard.writeText(currentCode).then(() => {
       copyBtn.textContent = '✓ Скопировано';
@@ -615,9 +617,6 @@ function showOverlayNotification(item) {
   speak('Уведомление. ' + item.productName);
 }
 
-// ============================================================
-// КАМЕРА
-// ============================================================
 async function startCamera() {
   if (cameraRunning) return;
   
@@ -660,9 +659,6 @@ async function stopCamera() {
   }
 }
 
-// ============================================================
-// СКАНИРОВАНИЕ
-// ============================================================
 async function onScanSuccess(decodedText) {
   const now = Date.now();
   if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
@@ -698,9 +694,6 @@ async function onScanSuccess(decodedText) {
   }
 }
 
-// ============================================================
-// ДЕЙСТВИЯ
-// ============================================================
 function handleResultAction(config) {
   if (config.next === 'writeoff') {
     showOverlayWriteoff();
@@ -729,9 +722,6 @@ function handleResultAction(config) {
   }
 }
 
-// ============================================================
-// PENDING
-// ============================================================
 function findPendingByCode(km) {
   return pendingItems.find(p => p.normalizedCode === km);
 }
@@ -740,6 +730,23 @@ function removePendingByCode(km) {
   pendingItems = pendingItems.filter(p => p.normalizedCode !== km);
   localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
   if (pushTimers[km]) { clearTimeout(pushTimers[km]); delete pushTimers[km]; }
+}
+
+// ОЧИСТКА ВСЕГО СПИСКА
+function clearAllPending() {
+  if (pendingItems.length === 0) {
+    showToast('Список уже пуст', '');
+    return;
+  }
+  pendingItems = [];
+  localStorage.removeItem('pendingMarks');
+  // Очищаем все таймеры
+  Object.keys(pushTimers).forEach(k => {
+    clearTimeout(pushTimers[k]);
+    delete pushTimers[k];
+  });
+  updatePendingList();
+  showToast('🗑️ Список очищен', '');
 }
 
 function schedulePush(km, delayMs = 30000) {
@@ -757,9 +764,6 @@ function schedulePush(km, delayMs = 30000) {
   }, delayMs);
 }
 
-// ============================================================
-// СПИСКИ
-// ============================================================
 function updatePendingList() {
   const list = document.getElementById('pending-list');
   const count = document.getElementById('pending-count');
@@ -788,9 +792,9 @@ function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
   const labels = { 
-    available: ' Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее', 
-    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи', 
-    not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: ' Заблокирован ОГВ' 
+    available: '🟢 Доступно', expired: ' Просрочено', written_off: ' Списано ранее', 
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: ' Нет связи', 
+    not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ' 
   };
   for (const mark of MARKS) {
     const item = document.createElement('div');
@@ -809,9 +813,6 @@ function showDemoCodes() {
   document.getElementById('screen-demo').classList.add('active');
 }
 
-// ============================================================
-// ОБРАБОТЧИКИ
-// ============================================================
 document.getElementById('btn-scan-back').onclick = async () => {
   hideAllOverlays();
   await stopCamera();
@@ -828,6 +829,9 @@ document.getElementById('btn-writeoff-confirm').onclick = () => {
 document.getElementById('btn-writeoff-cancel').onclick = () => hideAllOverlays();
 document.getElementById('btn-notification-close').onclick = () => hideAllOverlays();
 
+// КНОПКА ОЧИСТКИ
+document.getElementById('btn-clear').onclick = clearAllPending;
+
 document.getElementById('btn-test-push').onclick = () => {
   const item = pendingItems.find(p => p.step === 'waiting');
   if (item) {
@@ -839,6 +843,7 @@ document.getElementById('btn-test-push').onclick = () => {
     } else {
       showToast('Пуш готов', 'Запустите камеру чтобы увидеть');
     }
+    updatePendingList();
   } else {
     showToast('Нет ожидающих товаров', 'Отсканируйте марку ОГВ или хелп');
   }
