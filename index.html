@@ -462,7 +462,7 @@
 
   <div class="overlay overlay-notification" id="overlay-notification">
     <div class="notification-banner">
-      <div class="notification-icon"></div>
+      <div class="notification-icon">🔔</div>
       <div class="notification-content">
         <div class="notification-title">Уведомление</div>
         <div class="notification-text">Проверьте товар</div>
@@ -706,9 +706,9 @@ function handleResultAction(config) {
         normalizedCode: currentKm, timestamp: Date.now(), step: 'waiting' 
       });
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-      schedulePush(currentKm, 30000);
+      schedulePush(currentKm, 20000);
     }
-    showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 30 сек');
+    showToast(type === 'ogv' ? ' Товар отложен' : '📧 Заявка создана', 'Пуш через 20 сек');
     hideAllOverlays();
   } else if (config.next === 'remove_pending') {
     removePendingByCode(currentKm);
@@ -732,7 +732,6 @@ function removePendingByCode(km) {
   if (pushTimers[km]) { clearTimeout(pushTimers[km]); delete pushTimers[km]; }
 }
 
-// ОЧИСТКА ВСЕГО СПИСКА
 function clearAllPending() {
   if (pendingItems.length === 0) {
     showToast('Список уже пуст', '');
@@ -740,25 +739,30 @@ function clearAllPending() {
   }
   pendingItems = [];
   localStorage.removeItem('pendingMarks');
-  // Очищаем все таймеры
   Object.keys(pushTimers).forEach(k => {
     clearTimeout(pushTimers[k]);
     delete pushTimers[k];
   });
   updatePendingList();
-  showToast('🗑️ Список очищен', '');
+  showToast('️ Список очищен', '');
 }
 
-function schedulePush(km, delayMs = 30000) {
+function schedulePush(km, delayMs = 20000) {
   if (pushTimers[km]) clearTimeout(pushTimers[km]);
   pushTimers[km] = setTimeout(() => {
     const item = findPendingByCode(km);
     if (item && item.step === 'waiting') {
       item.step = 'notified';
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-      if (cameraRunning) {
-        showOverlayNotification(item);
+      // ИСПРАВЛЕНО: показываем пуш даже если камера не активна
+      if (!cameraRunning) {
+        // Автоматически переключаемся на экран сканирования
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-scan').classList.add('active');
+        cameraRunning = true; // Помечаем как активную чтобы не запускать повторно
       }
+      showOverlayNotification(item);
+      updatePendingList();
     }
     delete pushTimers[km];
   }, delayMs);
@@ -780,7 +784,7 @@ function updatePendingList() {
     if (item.type === 'help') {
       statusText = item.step === 'notified' ? '✅ Заявка обработана' : '📧 Заявка в хелп';
     } else {
-      statusText = item.step === 'notified' ? '✅ Статус изменён' : '⏳ Заблокирован ОГВ';
+      statusText = item.step === 'notified' ? '✅ Статус изменён' : ' Заблокирован ОГВ';
     }
     const time = new Date(item.timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     div.innerHTML = `<div class="pending-status">${statusText}</div><div class="pending-product">${item.productName}</div><div class="pending-time">${time}</div>`;
@@ -792,8 +796,8 @@ function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
   const labels = { 
-    available: '🟢 Доступно', expired: ' Просрочено', written_off: ' Списано ранее', 
-    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: ' Нет связи', 
+    available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее', 
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи', 
     not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ' 
   };
   for (const mark of MARKS) {
@@ -827,9 +831,17 @@ document.getElementById('btn-writeoff-confirm').onclick = () => {
   hideAllOverlays(); 
 };
 document.getElementById('btn-writeoff-cancel').onclick = () => hideAllOverlays();
-document.getElementById('btn-notification-close').onclick = () => hideAllOverlays();
+document.getElementById('btn-notification-close').onclick = () => {
+  hideAllOverlays();
+  // Если камера не была активна, возвращаемся на стартовый экран
+  if (!html5QrCode) {
+    document.getElementById('screen-scan').classList.remove('active');
+    document.getElementById('screen-start').classList.remove('hidden');
+    cameraRunning = false;
+    updatePendingList();
+  }
+};
 
-// КНОПКА ОЧИСТКИ
 document.getElementById('btn-clear').onclick = clearAllPending;
 
 document.getElementById('btn-test-push').onclick = () => {
@@ -838,11 +850,12 @@ document.getElementById('btn-test-push').onclick = () => {
     if (pushTimers[item.normalizedCode]) { clearTimeout(pushTimers[item.normalizedCode]); delete pushTimers[item.normalizedCode]; }
     item.step = 'notified';
     localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-    if (cameraRunning) {
-      showOverlayNotification(item);
-    } else {
-      showToast('Пуш готов', 'Запустите камеру чтобы увидеть');
+    if (!cameraRunning) {
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('screen-scan').classList.add('active');
+      cameraRunning = true;
     }
+    showOverlayNotification(item);
     updatePendingList();
   } else {
     showToast('Нет ожидающих товаров', 'Отсканируйте марку ОГВ или хелп');
