@@ -486,7 +486,7 @@
 </div>
 
 <div id="screen-writeoff" class="screen">
-  <h2>⚠️ Списание товара</h2>
+  <h2>️ Списание товара</h2>
   <p>Подтвердите списание просроченного товара</p>
   <div class="writeoff-buttons">
     <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
@@ -521,13 +521,13 @@ const MARKS = [
 const STATUS_CONFIG = {
   available: { bg: '#16a34a', icon: '✅', title: 'Доступно', subtitle: 'Выставьте в зал', action: 'ОК', voice: 'Товар доступен к продаже', next: 'scan' },
   expired: { bg: '#dc2626', icon: '⛔', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
-  written_off: { bg: '#dc2626', icon: '🚫', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'scan' },
+  written_off: { bg: '#dc2626', icon: '', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'scan' },
   sold: { bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка продана ранее', next: 'scan' },
   not_ours: { bg: '#dc2626', icon: '❌', title: 'Не наша марка', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка не принадлежит компании', next: 'scan' },
   no_connection: { bg: '#f59e0b', icon: '📡', title: 'Нет связи', subtitle: 'Повторите попытку', action: 'Повторить', voice: 'Нет связи с сервером', next: 'reload' },
-  not_in_turnover: { bg: '#0284c7', icon: '📧', title: 'Код не введен в оборот', subtitle: 'Требуется заявка', action: 'В хелп', voice: 'Код не введен в оборот', next: 'add_pending' },
+  not_in_turnover: { bg: '#0284c7', icon: '', title: 'Код не введен в оборот', subtitle: 'Требуется заявка', action: 'В хелп', voice: 'Код не введен в оборот', next: 'add_pending' },
   ogv_blocked: { bg: '#7c3aed', icon: '⏳', title: 'Код заблокирован ОГВ', subtitle: 'Отложите товар', action: 'Отложить', voice: 'Код заблокирован ОГВ', next: 'add_pending' },
-  unknown: { bg: '#6b7280', icon: '', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе', action: 'ОК', voice: 'Марка не найдена', next: 'scan' }
+  unknown: { bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе', action: 'ОК', voice: 'Марка не найдена', next: 'scan' }
 };
 
 let pendingItems = JSON.parse(localStorage.getItem('pendingMarks') || '[]');
@@ -570,9 +570,9 @@ function updatePendingList() {
     div.className = `pending-item ${item.step === 'notified' ? 'notified' : item.type}`;
     let statusText = '';
     if (item.type === 'help') {
-      statusText = item.step === 'notified' ? '✅ Заявка обработана' : ' Заявка в хелп';
+      statusText = item.step === 'notified' ? '✅ Заявка обработана' : '📧 Заявка в хелп';
     } else {
-      statusText = item.step === 'notified' ? '✅ Статус изменён' : '⏳ Заблокирован ОГВ';
+      statusText = item.step === 'notified' ? '✅ Статус изменён' : ' Заблокирован ОГВ';
     }
     const time = new Date(item.timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     div.innerHTML = `<div class="pending-status">${statusText}</div><div class="pending-product">${item.productName}</div><div class="pending-time">${time}</div>`;
@@ -636,6 +636,34 @@ function showToast(title, text) {
   setTimeout(() => toast.remove(), 2000);
 }
 
+// ИСПРАВЛЕНО: полный сброс сканера перед перезапуском
+async function resetScanner() {
+  if (html5QrCode) {
+    try {
+      if (isScanning) {
+        await html5QrCode.stop();
+      }
+      const reader = document.getElementById('reader');
+      while (reader.firstChild) {
+        reader.removeChild(reader.firstChild);
+      }
+      reader.innerHTML = `
+        <div class="scan-overlay">
+          <div class="scan-frame"></div>
+        </div>
+        <div class="scan-loader" id="scan-loader">
+          <div class="spinner"></div>
+          <span>Запуск камеры...</span>
+        </div>
+      `;
+    } catch (e) {
+      console.error('Ошибка при сбросе сканера:', e);
+    }
+    html5QrCode = null;
+  }
+  isScanning = false;
+}
+
 async function startScanner() {
   if (isScanning) return;
   showScreen('screen-scan');
@@ -645,7 +673,7 @@ async function startScanner() {
     loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
   }
   try {
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("reader", { verbose: false });
+    html5QrCode = new Html5Qrcode("reader", { verbose: false });
     await html5QrCode.start(
       { facingMode: "environment" },
       { fps: 15, qrbox: (vw, vh) => ({ width: Math.floor(Math.min(vw, vh) * 0.72), height: Math.floor(Math.min(vw, vh) * 0.72) }), formatsToSupport: [Html5QrcodeSupportedFormats.DATA_MATRIX, Html5QrcodeSupportedFormats.QR_CODE], aspectRatio: 1.0, experimentalFeatures: { useBarCodeDetectorIfAvailable: true } },
@@ -658,6 +686,12 @@ async function startScanner() {
   } catch (err) {
     console.error('Ошибка камеры:', err);
   }
+}
+
+// ИСПРАВЛЕНО: функция сброса и перезапуска
+async function resetAndStart() {
+  await resetScanner();
+  setTimeout(() => startScanner(), 300);
 }
 
 async function stopScanner() {
@@ -742,7 +776,7 @@ function showResult(config) {
   copyBtn.onclick = () => {
     navigator.clipboard.writeText(currentCode).then(() => {
       copyBtn.textContent = '✓ Скопировано';
-      setTimeout(() => copyBtn.textContent = '📋 Скопировать код', 1500);
+      setTimeout(() => copyBtn.textContent = ' Скопировать код', 1500);
     });
   };
 
@@ -766,22 +800,25 @@ function handleResultAction(config) {
       schedulePush(currentKm, 30000);
     }
     showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 30 сек');
-    setTimeout(() => startScanner(), 500);
+    // ИСПРАВЛЕНО: используем resetAndStart вместо startScanner
+    setTimeout(() => resetAndStart(), 500);
   } else if (config.next === 'remove_pending') {
     removePendingByCode(currentKm);
     showToast('✅ Товар выставлен в зал', 'Задание выполнено');
     currentPendingItem = null;
-    setTimeout(() => startScanner(), 500);
+    // ИСПРАВЛЕНО: используем resetAndStart вместо startScanner
+    setTimeout(() => resetAndStart(), 500);
   } else if (config.next === 'reload') {
     window.location.reload();
   } else if (config.next === 'scan') {
-    setTimeout(() => startScanner(), 500);
+    // ИСПРАВЛЕНО: используем resetAndStart вместо startScanner
+    setTimeout(() => resetAndStart(), 500);
   }
 }
 
 document.getElementById('btn-scan-back').onclick = () => showScreen('screen-start');
-document.getElementById('btn-writeoff-confirm').onclick = () => { vibrate([100, 50, 100, 50, 200]); speak('Списание подтверждено'); setTimeout(() => startScanner(), 500); };
-document.getElementById('btn-writeoff-cancel').onclick = () => setTimeout(() => startScanner(), 500);
+document.getElementById('btn-writeoff-confirm').onclick = () => { vibrate([100, 50, 100, 50, 200]); speak('Списание подтверждено'); setTimeout(() => resetAndStart(), 500); };
+document.getElementById('btn-writeoff-cancel').onclick = () => setTimeout(() => resetAndStart(), 500);
 document.getElementById('btn-notification-close').onclick = () => showScreen('screen-start');
 
 document.getElementById('btn-test-push').onclick = () => {
