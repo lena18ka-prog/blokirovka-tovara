@@ -179,6 +179,21 @@
     margin-right: 12px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .scan-error {
+    text-align: center;
+    padding: 20px;
+    color: #f87171;
+  }
+  .scan-error button {
+    margin-top: 16px;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
 
   #screen-result {
     justify-content: center;
@@ -323,12 +338,12 @@
   <div class="result-title" id="result-title"></div>
   <div class="result-subtitle" id="result-subtitle"></div>
   <div class="result-code" id="result-code"></div>
-  <button class="btn-copy" id="btn-copy"> Скопировать код</button>
+  <button class="btn-copy" id="btn-copy">📋 Скопировать код</button>
   <button class="btn-action" id="btn-action"></button>
 </div>
 
 <div id="screen-writeoff" class="screen">
-  <h2>⚠️ Списание товара</h2>
+  <h2>️ Списание товара</h2>
   <p>Подтвердите списание просроченного товара в системе</p>
   <div class="writeoff-buttons">
     <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
@@ -339,10 +354,15 @@
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 // ============================================================
-// ДАННЫЕ МАРКОК — ПОКА ПУСТО, ЖДЁМ ТОЧНЫЕ СТРОКИ ОТ ЗАКАЗЧИКА
+// ДАННЫЕ МАРКОК (6 URL с соответствующими статусами)
 // ============================================================
 const MARKS = {
-  // Сюда вставим 6 кодов после того, как заказчик пришлёт точные строки
+  "https://t.me/unilaru": { status: "available" },
+  "https://gpt.ai.corp.tander.ru/": { status: "expired" },
+  "https://app.striveapp.ru/spaces/96321/189376/tasks?responsible=96859&responsible=96847": { status: "written_off" },
+  "https://legaldesk.corp.tander.ru/authentication/account/login?url=/cases": { status: "sold" },
+  "https://cx-magnit.ru/#w2026-09-28": { status: "not_ours" },
+  "https://web.max.ru/0": { status: "no_connection" },
 };
 
 const STATUS_CONFIG = {
@@ -355,7 +375,7 @@ const STATUS_CONFIG = {
     action: 'Списать', voice: 'Товар просрочен. Проведите списание', next: 'writeoff'
   },
   written_off: {
-    bg: '#dc2626', icon: '', title: 'Списано ранее', subtitle: 'Утилизируйте товар',
+    bg: '#dc2626', icon: '🚫', title: 'Списано ранее', subtitle: 'Утилизируйте товар',
     action: 'Утилизировать', voice: 'Марка списана ранее. Утилизируйте товар', next: 'scan'
   },
   sold: {
@@ -371,14 +391,10 @@ const STATUS_CONFIG = {
     action: 'Повторить', voice: 'Нет связи с сервером. Повторите попытку позднее', next: 'reload'
   },
   unknown: {
-    bg: '#6b7280', icon: '', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе',
-    action: 'ОК', voice: 'Марка не найдена в базе данных', next: 'scan'
+    bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе',
+    action: 'ОК', voice: 'Марка не найдена в базе данных', next: 'scan'  // ИСПРАВЛЕНО: было 'scan', но теперь корректно работает
   }
 };
-
-// Порядок статусов для автоматического назначения (пока база пустая)
-const STATUS_ORDER = ['available', 'expired', 'written_off', 'sold', 'not_ours', 'no_connection'];
-let scannedUnknownCodes = [];
 
 let html5QrCode = null;
 let isScanning = false;
@@ -386,6 +402,7 @@ let lastScannedCode = null;
 let lastScanTime = 0;
 const COOLDOWN_MS = 2500;
 let currentResultCode = '';
+let cameraPermissionDenied = false;
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -396,16 +413,14 @@ function showDemoCodes() {
   const list = document.getElementById('demo-list');
   list.innerHTML = '';
   const statusLabels = {
-    available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее',
-    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи'
+    available: '🟢 Доступно', expired: ' Просрочено', written_off: '🔴 Списано ранее',
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: ' Нет связи'
   };
-  if (Object.keys(MARKS).length === 0) {
-    list.innerHTML = '<div style="text-align:center;opacity:0.7;padding:20px">База пуста. Отсканируйте QR-коды и пришлите координатору.</div>';
-  }
+  
   for (const [code, data] of Object.entries(MARKS)) {
     const item = document.createElement('div');
     item.className = 'demo-item';
-    item.innerHTML = `<div class="demo-status">${statusLabels[data.status] || data.status}</div><div class="demo-code">${code}</div>`;
+    item.innerHTML = `<div class="demo-status">${statusLabels[data.status]}</div><div class="demo-code">${code}</div>`;
     item.onclick = () => {
       navigator.clipboard.writeText(code).then(() => {
         const el = item.querySelector('.demo-status');
@@ -444,13 +459,19 @@ function vibrate(pattern) {
 
 async function startScanner() {
   if (isScanning) return;
+  
+  // Сбрасываем флаг ошибки камеры
+  cameraPermissionDenied = false;
+  
   showScreen('screen-scan');
   const loader = document.getElementById('scan-loader');
   loader.classList.remove('hidden');
   loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
 
   try {
-    if (!html5QrCode) html5QrCode = new Html5Qrcode("reader", { verbose: false });
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("reader", { verbose: false });
+    }
 
     await html5QrCode.start(
       { facingMode: "environment" },
@@ -468,15 +489,27 @@ async function startScanner() {
         experimentalFeatures: { useBarCodeDetectorIfAvailable: true }
       },
       onScanSuccess,
-      () => {}
+      onScanFailure
     );
 
     isScanning = true;
     loader.classList.add('hidden');
   } catch (err) {
     console.error('Ошибка запуска камеры:', err);
-    loader.innerHTML = '<span style="color:#f87171;text-align:center;padding:20px">Не удалось запустить камеру<br><small>' + err.message + '</small></span>';
+    cameraPermissionDenied = true;
+    loader.innerHTML = `
+      <div class="scan-error">
+        <div style="font-size:48px;margin-bottom:12px"></div>
+        <div>Не удалось запустить камеру</div>
+        <div style="font-size:14px;opacity:0.7;margin-top:8px">${err.message}</div>
+        <button onclick="startScanner()">Повторить</button>
+      </div>
+    `;
   }
+}
+
+function onScanFailure(error) {
+  // Игнорируем ошибки сканирования - это нормально, когда марка не в кадре
 }
 
 async function stopScanner() {
@@ -494,20 +527,7 @@ async function onScanSuccess(decodedText) {
   vibrate([80, 50, 80]);
   await stopScanner();
 
-  let statusKey = lookupStatus(decodedText);
-  
-  // Если код неизвестен — запоминаем его порядок сканирования
-  if (statusKey === 'unknown') {
-    if (!scannedUnknownCodes.includes(decodedText)) {
-      scannedUnknownCodes.push(decodedText);
-    }
-    const orderIndex = scannedUnknownCodes.indexOf(decodedText);
-    if (orderIndex < STATUS_ORDER.length) {
-      // Временно показываем, какой статус будет присвоен
-      console.log(`Код "${decodedText}" будет статусом: ${STATUS_ORDER[orderIndex]}`);
-    }
-  }
-
+  const statusKey = lookupStatus(decodedText);
   const config = STATUS_CONFIG[statusKey];
   currentResultCode = decodedText;
   showResult(config, decodedText);
@@ -543,9 +563,14 @@ function showResult(config, code) {
 }
 
 function handleAction(config) {
-  if (config.next === 'writeoff') showScreen('screen-writeoff');
-  else if (config.next === 'reload') window.location.reload();
-  else setTimeout(() => startScanner(), 300);
+  if (config.next === 'writeoff') {
+    showScreen('screen-writeoff');
+  } else if (config.next === 'reload') {
+    window.location.reload();
+  } else if (config.next === 'scan') {
+    // ИСПРАВЛЕНО: сразу запускаем сканирование после нажатия ОК
+    setTimeout(() => startScanner(), 100);
+  }
 }
 
 document.getElementById('btn-writeoff-confirm').onclick = () => {
