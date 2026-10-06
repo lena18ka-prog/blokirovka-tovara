@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a1a">
+<title>Проверка марок · Честный Знак</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .screen.active { display: flex; }
+
+  /* ===== Стартовый экран ===== */
+  #screen-start {
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    padding: 24px;
+    text-align: center;
+  }
+  #screen-start h1 { font-size: 28px; margin-bottom: 12px; }
+  #screen-start p { font-size: 16px; opacity: 0.85; margin-bottom: 40px; line-height: 1.4; }
+  .btn-start {
+    background: #fff;
+    color: #1e3a8a;
+    border: none;
+    padding: 20px 48px;
+    font-size: 20px;
+    font-weight: 700;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  }
+  .btn-start:active { transform: scale(0.97); }
+
+  /* ===== Экран сканирования ===== */
+  #screen-scan { background: #000; }
+  .scan-header {
+    padding: 16px 20px;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    z-index: 10;
+  }
+  #reader { flex: 1; position: relative; overflow: hidden; }
+  #reader video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+  #reader__scan_region { width: 100%; height: 100%; }
+  #reader__scan_region video { width: 100% !important; height: 100% !important; }
+  #reader__dashboard { display: none !important; }
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .scan-frame {
+    width: min(75vw, 320px);
+    height: min(75vw, 320px);
+    border: 3px solid rgba(255,255,255,0.9);
+    border-radius: 20px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+    position: relative;
+  }
+  .scan-frame::before {
+    content: "Наведите камеру на DataMatrix";
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 14px;
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  }
+  .scan-loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    font-size: 16px;
+    z-index: 20;
+  }
+  .scan-loader.hidden { display: none; }
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== Экран результата ===== */
+  #screen-result {
+    justify-content: center;
+    align-items: center;
+    padding: 32px 24px;
+    text-align: center;
+    transition: background 0.3s;
+  }
+  .result-icon {
+    font-size: 80px;
+    margin-bottom: 24px;
+    animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes pop {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .result-title {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    line-height: 1.1;
+  }
+  .result-subtitle {
+    font-size: 20px;
+    margin-bottom: 48px;
+    opacity: 0.95;
+    line-height: 1.3;
+  }
+  .result-code {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-bottom: 24px;
+    word-break: break-all;
+    max-width: 100%;
+    font-family: monospace;
+  }
+  .btn-action {
+    background: rgba(255,255,255,0.95);
+    color: #1a1a1a;
+    border: none;
+    padding: 20px 48px;
+    font-size: 20px;
+    font-weight: 700;
+    border-radius: 16px;
+    cursor: pointer;
+    min-width: 240px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
+  .btn-action:active { transform: scale(0.97); }
+
+  /* ===== Мок-экран списания ===== */
+  #screen-writeoff {
+    background: #2a0a0a;
+    justify-content: center;
+    align-items: center;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  #screen-writeoff h2 { font-size: 28px; margin-bottom: 16px; }
+  #screen-writeoff p {
+    font-size: 16px;
+    opacity: 0.85;
+    margin-bottom: 32px;
+    line-height: 1.4;
+  }
+  .writeoff-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .btn-confirm {
+    background: #f44336;
+    color: #fff;
+    border: none;
+    padding: 18px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 14px;
+    cursor: pointer;
+  }
+  .btn-cancel {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: none;
+    padding: 18px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 14px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- Экран 1: Старт -->
+<div id="screen-start" class="screen active">
+  <h1>Проверка марок</h1>
+  <p>Сканирование DataMatrix<br>Честный Знак</p>
+  <button class="btn-start" id="btn-start">Начать работу</button>
+</div>
+
+<!-- Экран 2: Сканирование -->
+<div id="screen-scan" class="screen">
+  <div class="scan-header">Наведите камеру на марку</div>
+  <div id="reader">
+    <div class="scan-overlay">
+      <div class="scan-frame"></div>
+    </div>
+    <div class="scan-loader" id="scan-loader">
+      <div class="spinner"></div>
+      <span>Запуск камеры...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Экран 3: Результат -->
+<div id="screen-result" class="screen">
+  <div class="result-icon" id="result-icon"></div>
+  <div class="result-title" id="result-title"></div>
+  <div class="result-subtitle" id="result-subtitle"></div>
+  <div class="result-code" id="result-code"></div>
+  <button class="btn-action" id="btn-action"></button>
+</div>
+
+<!-- Экран 4: Списание (мок) -->
+<div id="screen-writeoff" class="screen">
+  <h2>⚠️ Списание товара</h2>
+  <p>Подтвердите списание просроченного товара в системе</p>
+  <div class="writeoff-buttons">
+    <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
+    <button class="btn-cancel" id="btn-writeoff-cancel">Отмена</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+// ============================================================
+// ДАННЫЕ МАРКОК (МОК)
+// Заказчик подставит сюда реальные коды из таблицы (30 шт.)
+// Формат: "код_марки": { status: "ключ_статуса" }
+// Ключи статуса: available, expired, written_off, sold, not_ours, no_connection
+// ============================================================
+const MARKS = {
+  // Примеры (замените на реальные коды из таблицы):
+  // "0104603785000011215ABCDEF123456": { status: "available" },
+  // "0104603785000011215GHIJKL678901": { status: "expired" },
+  // "01046037850000115ABCDEF123456":   { status: "written_off" },
+  // "01046037850000115GHIJKL678901":   { status: "sold" },
+  // "01046037850000118ABCDEF123456":   { status: "not_ours" },
+  // "01046037850000118GHIJKL678901":   { status: "no_connection" },
+};
+
+// ============================================================
+// КОНФИГУРАЦИЯ СТАТУСОВ
+// ============================================================
+const STATUS_CONFIG = {
+  available: {
+    bg: '#16a34a',
+    icon: '✅',
+    title: 'Доступно',
+    subtitle: 'Выставьте в зал',
+    action: 'ОК',
+    voice: 'Товар доступен к продаже. Выставьте в зал',
+    next: 'scan'
+  },
+  expired: {
+    bg: '#dc2626',
+    icon: '⛔',
+    title: 'Просрочено',
+    subtitle: 'Проведите списание',
+    action: 'Списать',
+    voice: 'Товар просрочен. Проведите списание',
+    next: 'writeoff'
+  },
+  written_off: {
+    bg: '#dc2626',
+    icon: '🚫',
+    title: 'Списано ранее',
+    subtitle: 'Принято к сведению',
+    action: 'Принято',
+    voice: 'Марка была списана ранее',
+    next: 'scan'
+  },
+  sold: {
+    bg: '#dc2626',
+    icon: '🚫',
+    title: 'Продано ранее',
+    subtitle: 'Принято к сведению',
+    action: 'Принято',
+    voice: 'Марка была продана ранее',
+    next: 'scan'
+  },
+  not_ours: {
+    bg: '#dc2626',
+    icon: '❌',
+    title: 'Не наша марка',
+    subtitle: 'Принято к сведению',
+    action: 'Понятно',
+    voice: 'Марка не принадлежит компании',
+    next: 'scan'
+  },
+  no_connection: {
+    bg: '#f59e0b',
+    icon: '📡',
+    title: 'Нет связи',
+    subtitle: 'Повторите попытку позднее',
+    action: 'Повторить',
+    voice: 'Нет связи с сервером. Повторите попытку позднее',
+    next: 'scan'
+  },
+  unknown: {
+    bg: '#6b7280',
+    icon: '❓',
+    title: 'Марка не найдена',
+    subtitle: 'Код отсутствует в базе',
+    action: 'ОК',
+    voice: 'Марка не найдена в базе данных',
+    next: 'scan'
+  }
+};
+
+// ============================================================
+// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// ============================================================
+let html5QrCode = null;
+let isScanning = false;
+let lastScannedCode = null;
+let lastScanTime = 0;
+const COOLDOWN_MS = 2500; // защита от повторного срабатывания на ту же марку
+
+// ============================================================
+// НАВИГАЦИЯ
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ============================================================
+// ПОИСК СТАТУСА МАРКИ
+// ============================================================
+function lookupStatus(code) {
+  const normalized = code.trim().toUpperCase();
+  for (const key of Object.keys(MARKS)) {
+    if (key.toUpperCase() === normalized) {
+      return MARKS[key].status;
+    }
+  }
+  // В продакшене здесь будет запрос к БД КМ / ГИС МТ
+  return 'unknown';
+}
+
+// ============================================================
+// ГОЛОСОВОЕ СОПРОВОЖДЕНИЕ
+// ============================================================
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ru-RU';
+  utterance.rate = 1.05;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  const voices = window.speechSynthesis.getVoices();
+  const ruVoice = voices.find(v => v.lang.startsWith('ru'));
+  if (ruVoice) utterance.voice = ruVoice;
+  window.speechSynthesis.speak(utterance);
+}
+
+// ============================================================
+// ВИБРАЦИЯ
+// ============================================================
+function vibrate(pattern) {
+  if ('vibrate' in navigator) navigator.vibrate(pattern);
+}
+
+// ============================================================
+// ЗАПУСК СКАНЕРА
+// ============================================================
+async function startScanner() {
+  if (isScanning) return;
+  showScreen('screen-scan');
+  const loader = document.getElementById('scan-loader');
+  loader.classList.remove('hidden');
+  loader.innerHTML = '<div class="spinner"></div><span>Запуск камеры...</span>';
+
+  try {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("reader", { verbose: false });
+    }
+
+    const config = {
+      fps: 15,
+      qrbox: (vw, vh) => {
+        const size = Math.floor(Math.min(vw, vh) * 0.72);
+        return { width: size, height: size };
+      },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
+        Html5QrcodeSupportedFormats.QR_CODE
+      ],
+      aspectRatio: 1.0,
+      experimentalFeatures: { useBarCodeDetectorIfAvailable: true }
+    };
+
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      onScanSuccess,
+      () => {}
+    );
+
+    isScanning = true;
+    loader.classList.add('hidden');
+  } catch (err) {
+    console.error('Ошибка запуска камеры:', err);
+    loader.innerHTML = '<span style="color:#f87171;text-align:center;padding:20px">' +
+      'Не удалось запустить камеру<br><small>' + err.message + '</small></span>';
+  }
+}
+
+async function stopScanner() {
+  if (!isScanning || !html5QrCode) return;
+  try { await html5QrCode.stop(); } catch (e) {}
+  isScanning = false;
+}
+
+// ============================================================
+// УСПЕШНОЕ СКАНИРОВАНИЕ
+// ============================================================
+async function onScanSuccess(decodedText) {
+  const now = Date.now();
+  if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
+  lastScannedCode = decodedText;
+  lastScanTime = now;
+
+  vibrate([80, 50, 80]);
+  await stopScanner();
+
+  const statusKey = lookupStatus(decodedText);
+  const config = STATUS_CONFIG[statusKey];
+
+  showResult(config, decodedText);
+  speak(config.voice);
+}
+
+// ============================================================
+// ПОКАЗ РЕЗУЛЬТАТА
+// ============================================================
+function showResult(config, code) {
+  document.getElementById('screen-result').style.background = config.bg;
+  document.getElementById('result-icon').textContent = config.icon;
+  document.getElementById('result-title').textContent = config.title;
+  document.getElementById('result-subtitle').textContent = config.subtitle;
+  document.getElementById('result-code').textContent = code.length > 50 ? code.slice(0, 50) + '…' : code;
+
+  const btn = document.getElementById('btn-action');
+  btn.textContent = config.action;
+  btn.onclick = () => handleAction(config);
+
+  showScreen('screen-result');
+}
+
+// ============================================================
+// ДЕЙСТВИЕ ПОСЛЕ РЕЗУЛЬТАТА
+// ============================================================
+function handleAction(config) {
+  if (config.next === 'writeoff') {
+    showScreen('screen-writeoff');
+  } else {
+    setTimeout(() => startScanner(), 300);
+  }
+}
+
+// ============================================================
+// КНОПКИ СПИСАНИЯ (МОК)
+// ============================================================
+document.getElementById('btn-writeoff-confirm').onclick = () => {
+  vibrate([100, 50, 100, 50, 200]);
+  speak('Списание подтверждено');
+  // В продакшене: API-запрос к системе списания
+  setTimeout(() => startScanner(), 800);
+};
+
+document.getElementById('btn-writeoff-cancel').onclick = () => {
+  startScanner();
+};
+
+// ============================================================
+// СТАРТ
+// ============================================================
+document.getElementById('btn-start').onclick = () => {
+  // Прогрев speechSynthesis (критично для iOS)
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
+    const warmup = new SpeechSynthesisUtterance('');
+    warmup.volume = 0;
+    window.speechSynthesis.speak(warmup);
+  }
+  startScanner();
+};
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+</script>
+</body>
+</html>
