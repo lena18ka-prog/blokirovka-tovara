@@ -5,32 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1a1a1a">
+<meta name="theme-color" content="#000">
 <title>Проверка марок · Честный Знак</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body {
     height: 100%;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #1a1a1a;
+    background: #000;
     color: #fff;
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
   }
-  .screen {
+  
+  /* ===== СТАРТОВЫЙ ЭКРАН ===== */
+  #screen-start {
     position: absolute;
     inset: 0;
-    display: none;
+    display: flex;
     flex-direction: column;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  }
-  .screen.active { display: flex; }
-
-  #screen-start {
     background: #1a1a1a;
     overflow-y: auto;
+    z-index: 100;
   }
+  #screen-start.hidden { display: none; }
   .start-header {
     background: linear-gradient(135deg, #1e3a8a, #3b82f6);
     padding: 24px;
@@ -53,10 +52,10 @@
     max-width: 320px;
   }
   .btn-start:active { transform: scale(0.97); }
-  .btn-demo {
-    background: rgba(255,255,255,0.2);
+  .btn-demo, .btn-test-push {
+    background: rgba(255,255,255,0.15);
     color: #fff;
-    border: 2px solid rgba(255,255,255,0.5);
+    border: 1px solid rgba(255,255,255,0.3);
     padding: 14px 32px;
     font-size: 16px;
     font-weight: 600;
@@ -66,26 +65,9 @@
     width: 100%;
     max-width: 320px;
   }
-  .btn-demo:active { transform: scale(0.97); }
-  .btn-test-push {
-    background: rgba(255,255,255,0.15);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.3);
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 10px;
-    cursor: pointer;
-    margin-top: 12px;
-    width: 100%;
-    max-width: 320px;
-  }
-  .btn-test-push:active { transform: scale(0.97); }
+  .btn-demo:active, .btn-test-push:active { transform: scale(0.97); }
   
-  .pending-section {
-    padding: 20px;
-    flex: 1;
-  }
+  .pending-section { padding: 20px; flex: 1; }
   .pending-header {
     font-size: 18px;
     font-weight: 700;
@@ -106,8 +88,6 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-height: 50vh;
-    overflow-y: auto;
   }
   .pending-item {
     background: rgba(255,255,255,0.08);
@@ -118,83 +98,29 @@
   .pending-item.help { border-left-color: #0284c7; }
   .pending-item.ogv { border-left-color: #7c3aed; }
   .pending-item.notified { border-left-color: #16a34a; }
-  .pending-status {
-    font-size: 12px;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-  .pending-product {
-    font-size: 14px;
-    margin-bottom: 4px;
-    line-height: 1.3;
-  }
-  .pending-time {
-    font-size: 11px;
-    opacity: 0.7;
-  }
-  .pending-empty {
-    text-align: center;
-    padding: 40px 20px;
-    opacity: 0.5;
-    font-size: 14px;
-  }
+  .pending-status { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .pending-product { font-size: 14px; margin-bottom: 4px; line-height: 1.3; }
+  .pending-time { font-size: 11px; opacity: 0.7; }
+  .pending-empty { text-align: center; padding: 40px 20px; opacity: 0.5; font-size: 14px; }
 
-  #screen-demo {
-    background: #0f172a;
-    padding: 24px;
-    overflow-y: auto;
-  }
-  .demo-header {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    text-align: center;
-  }
-  .demo-list {
-    display: flex;
+  /* ===== ЭКРАН СКАНИРОВАНИЯ (камера всегда активна) ===== */
+  #screen-scan {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    display: none;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 24px;
   }
-  .demo-item {
-    background: rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 16px;
-    cursor: pointer;
-  }
-  .demo-item:active { background: rgba(255,255,255,0.2); }
-  .demo-status {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-  .demo-code {
-    font-size: 12px;
-    font-family: monospace;
-    opacity: 0.9;
-    word-break: break-all;
-  }
-  .btn-back {
-    background: rgba(255,255,255,0.2);
-    color: #fff;
-    border: none;
-    padding: 16px;
-    font-size: 18px;
-    font-weight: 600;
-    border-radius: 12px;
-    cursor: pointer;
-    width: 100%;
-  }
-
-  #screen-scan { background: #000; }
+  #screen-scan.active { display: flex; }
+  
   .scan-header {
     padding: 12px 16px;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.75);
     backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    z-index: 10;
+    z-index: 30;
     gap: 12px;
   }
   .scan-header-title {
@@ -216,7 +142,11 @@
   }
   .btn-scan-back:active { background: rgba(255,255,255,0.25); }
   
-  #reader { flex: 1; position: relative; overflow: hidden; }
+  #reader {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
   #reader video {
     width: 100% !important;
     height: 100% !important;
@@ -225,7 +155,8 @@
   #reader__scan_region { width: 100%; height: 100%; }
   #reader__scan_region video { width: 100% !important; height: 100% !important; }
   #reader__dashboard { display: none !important; }
-  .scan-overlay {
+  
+  .scan-overlay-frame {
     position: absolute;
     inset: 0;
     display: flex;
@@ -253,65 +184,67 @@
     white-space: nowrap;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
   }
-  .scan-loader {
+
+  /* ===== ОВЕРЛЕИ РЕЗУЛЬТАТА (поверх камеры) ===== */
+  .overlay {
     position: absolute;
     inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0,0,0,0.8);
-    color: #fff;
-    font-size: 16px;
-    z-index: 20;
-  }
-  .scan-loader.hidden { display: none; }
-  .spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 12px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  #screen-result {
+    display: none;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     padding: 24px 20px;
     text-align: center;
+    z-index: 20;
+    animation: fadeIn 0.2s ease-out;
   }
-  .result-icon {
+  .overlay.active { display: flex; }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .overlay-icon {
     font-size: 70px;
     margin-bottom: 16px;
+    animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .result-title {
+  @keyframes pop {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .overlay-title {
     font-size: 28px;
     font-weight: 800;
     margin-bottom: 8px;
+    line-height: 1.1;
   }
-  .result-product {
+  .overlay-product {
     font-size: 16px;
     margin-bottom: 8px;
     opacity: 0.95;
+    line-height: 1.3;
+    max-width: 100%;
+    padding: 0 12px;
   }
-  .result-stock {
+  .overlay-stock {
     font-size: 14px;
     margin-bottom: 12px;
     opacity: 0.9;
   }
-  .result-subtitle {
+  .overlay-subtitle {
     font-size: 18px;
     margin-bottom: 20px;
     opacity: 0.95;
+    line-height: 1.3;
   }
-  .result-code {
+  .overlay-code {
     font-size: 11px;
     opacity: 0.7;
     margin-bottom: 12px;
     word-break: break-all;
+    max-width: 100%;
     font-family: monospace;
+    padding: 0 12px;
   }
   .btn-copy {
     background: rgba(0,0,0,0.3);
@@ -324,6 +257,7 @@
     cursor: pointer;
     margin-bottom: 16px;
   }
+  .btn-copy:active { transform: scale(0.97); }
   .btn-action {
     background: rgba(255,255,255,0.95);
     color: #1a1a1a;
@@ -334,22 +268,16 @@
     border-radius: 16px;
     cursor: pointer;
     min-width: 220px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
   }
   .btn-action:active { transform: scale(0.97); }
 
-  #screen-writeoff {
-    background: #2a0a0a;
-    justify-content: center;
-    align-items: center;
-    padding: 32px 24px;
-    text-align: center;
+  /* ===== ОВЕРЛЕЙ СПИСАНИЯ ===== */
+  .overlay-writeoff {
+    background: rgba(42, 10, 10, 0.97);
   }
-  #screen-writeoff h2 { font-size: 28px; margin-bottom: 16px; }
-  #screen-writeoff p {
-    font-size: 16px;
-    opacity: 0.85;
-    margin-bottom: 32px;
-  }
+  .overlay-writeoff h2 { font-size: 28px; margin-bottom: 16px; }
+  .overlay-writeoff p { font-size: 16px; opacity: 0.85; margin-bottom: 32px; line-height: 1.4; }
   .writeoff-buttons {
     display: flex;
     flex-direction: column;
@@ -378,8 +306,11 @@
     cursor: pointer;
   }
 
-  #screen-notification {
+  /* ===== ОВЕРЛЕЙ УВЕДОМЛЕНИЯ ===== */
+  .overlay-notification {
     background: rgba(0,0,0,0.95);
+    justify-content: flex-start;
+    align-items: stretch;
     padding: 0;
   }
   .notification-banner {
@@ -393,9 +324,7 @@
   .notification-content { flex: 1; }
   .notification-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
   .notification-text { font-size: 14px; opacity: 0.9; }
-  .notification-body {
-    padding: 24px 20px;
-  }
+  .notification-body { padding: 24px 20px; flex: 1; }
   .notification-product {
     background: rgba(255,255,255,0.1);
     border-radius: 12px;
@@ -416,6 +345,42 @@
     width: calc(100% - 40px);
   }
 
+  /* ===== ДЕМО ЭКРАН ===== */
+  #screen-demo {
+    position: absolute;
+    inset: 0;
+    background: #0f172a;
+    padding: 24px;
+    overflow-y: auto;
+    display: none;
+    flex-direction: column;
+    z-index: 100;
+  }
+  #screen-demo.active { display: flex; }
+  .demo-header { font-size: 24px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+  .demo-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; flex: 1; overflow-y: auto; }
+  .demo-item {
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+  }
+  .demo-item:active { background: rgba(255,255,255,0.2); }
+  .demo-status { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .demo-code { font-size: 12px; font-family: monospace; opacity: 0.9; word-break: break-all; }
+  .btn-back {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border: none;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  /* ===== ТОСТ ===== */
   .toast {
     position: fixed;
     top: 20px;
@@ -426,15 +391,21 @@
     padding: 16px 24px;
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    z-index: 2000;
+    z-index: 3000;
     max-width: 90%;
     text-align: center;
+    animation: slideDown 0.3s ease-out;
+  }
+  @keyframes slideDown {
+    from { transform: translate(-50%, -100%); }
+    to { transform: translate(-50%, 0); }
   }
 </style>
 </head>
 <body>
 
-<div id="screen-start" class="screen active">
+<!-- ===== СТАРТОВЫЙ ЭКРАН ===== -->
+<div id="screen-start">
   <div class="start-header">
     <h1>Проверка марок</h1>
     <p>Сканирование DataMatrix · Честный Знак</p>
@@ -451,63 +422,67 @@
   </div>
 </div>
 
-<div id="screen-demo" class="screen">
-  <div class="demo-header">Тестовые коды</div>
-  <div class="demo-list" id="demo-list"></div>
-  <button class="btn-back" id="btn-demo-back">Назад</button>
-</div>
-
-<div id="screen-scan" class="screen">
+<!-- ===== ЭКРАН СКАНИРОВАНИЯ С КАМЕРОЙ ===== -->
+<div id="screen-scan">
   <div class="scan-header">
     <button class="btn-scan-back" id="btn-scan-back">← К списку</button>
     <div class="scan-header-title">Наведите камеру на марку</div>
     <div style="width:80px"></div>
   </div>
   <div id="reader">
-    <div class="scan-overlay">
+    <div class="scan-overlay-frame">
       <div class="scan-frame"></div>
     </div>
-    <div class="scan-loader" id="scan-loader">
-      <div class="spinner"></div>
-      <span>Запуск камеры...</span>
+  </div>
+
+  <!-- Оверлей результата -->
+  <div class="overlay" id="overlay-result">
+    <div class="overlay-icon" id="ov-icon"></div>
+    <div class="overlay-title" id="ov-title"></div>
+    <div class="overlay-product" id="ov-product"></div>
+    <div class="overlay-stock" id="ov-stock"></div>
+    <div class="overlay-subtitle" id="ov-subtitle"></div>
+    <div class="overlay-code" id="ov-code"></div>
+    <button class="btn-copy" id="btn-copy">📋 Скопировать код</button>
+    <button class="btn-action" id="btn-action"></button>
+  </div>
+
+  <!-- Оверлей списания -->
+  <div class="overlay overlay-writeoff" id="overlay-writeoff">
+    <h2>⚠️ Списание товара</h2>
+    <p>Подтвердите списание просроченного товара</p>
+    <div class="writeoff-buttons">
+      <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
+      <button class="btn-cancel" id="btn-writeoff-cancel">Отмена</button>
     </div>
   </div>
-</div>
 
-<div id="screen-result" class="screen">
-  <div class="result-icon" id="result-icon"></div>
-  <div class="result-title" id="result-title"></div>
-  <div class="result-product" id="result-product"></div>
-  <div class="result-stock" id="result-stock"></div>
-  <div class="result-subtitle" id="result-subtitle"></div>
-  <div class="result-code" id="result-code"></div>
-  <button class="btn-copy" id="btn-copy">📋 Скопировать код</button>
-  <button class="btn-action" id="btn-action"></button>
-</div>
-
-<div id="screen-writeoff" class="screen">
-  <h2>️ Списание товара</h2>
-  <p>Подтвердите списание просроченного товара</p>
-  <div class="writeoff-buttons">
-    <button class="btn-confirm" id="btn-writeoff-confirm">Подтвердить списание</button>
-    <button class="btn-cancel" id="btn-writeoff-cancel">Отмена</button>
-  </div>
-</div>
-
-<div id="screen-notification" class="screen">
-  <div class="notification-banner">
-    <div class="notification-icon">🔔</div>
-    <div class="notification-content">
-      <div class="notification-title">Уведомление</div>
-      <div class="notification-text">Проверьте товар</div>
+  <!-- Оверлей уведомления -->
+  <div class="overlay overlay-notification" id="overlay-notification">
+    <div class="notification-banner">
+      <div class="notification-icon">🔔</div>
+      <div class="notification-content">
+        <div class="notification-title">Уведомление</div>
+        <div class="notification-text">Проверьте товар</div>
+      </div>
     </div>
+    <div class="notification-body" id="notification-body"></div>
+    <button class="btn-notification-close" id="btn-notification-close">Понятно</button>
   </div>
-  <div class="notification-body" id="notification-body"></div>
-  <button class="btn-notification-close" id="btn-notification-close">Понятно</button>
+</div>
+
+<!-- ===== ДЕМО ЭКРАН ===== -->
+<div id="screen-demo">
+  <div class="demo-header">Тестовые коды</div>
+  <div class="demo-list" id="demo-list"></div>
+  <button class="btn-back" id="btn-demo-back">Назад</button>
 </div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
+// ============================================================
+// ДАННЫЕ
+// ============================================================
 const MARKS = [
   { km: "04620081141216VX39Rfe", full: "04620081141216VX39RfeAAAAdKhW", status: "ogv_blocked", productName: "ХИТС Бирюзовый DM Стик (ФМ): 10/500", stock: "12 шт." },
   { km: "00000046218636j<St'eH", full: "00000046218636j<St'eHAC3AbwCy", status: "not_in_turnover", productName: "ВОГ СС Блю Сигареты МРЦ172(БАТ):10/500", stock: "5 шт." },
@@ -519,23 +494,27 @@ const MARKS = [
 ];
 
 const STATUS_CONFIG = {
-  available: { bg: '#16a34a', icon: '✅', title: 'Доступно', subtitle: 'Выставьте в зал', action: 'ОК', voice: 'Товар доступен к продаже', next: 'scan' },
-  expired: { bg: '#dc2626', icon: '⛔', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
-  written_off: { bg: '#dc2626', icon: '', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'scan' },
-  sold: { bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка продана ранее', next: 'scan' },
-  not_ours: { bg: '#dc2626', icon: '❌', title: 'Не наша марка', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка не принадлежит компании', next: 'scan' },
+  available: { bg: '#16a34a', icon: '✅', title: 'Доступно', subtitle: 'Выставьте в зал', action: 'ОК', voice: 'Товар доступен к продаже', next: 'hide' },
+  expired: { bg: '#dc2626', icon: '', title: 'Просрочено', subtitle: 'Проведите списание', action: 'Списать', voice: 'Товар просрочен', next: 'writeoff' },
+  written_off: { bg: '#dc2626', icon: '🚫', title: 'Списано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка списана ранее', next: 'hide' },
+  sold: { bg: '#dc2626', icon: '🚫', title: 'Продано ранее', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка продана ранее', next: 'hide' },
+  not_ours: { bg: '#dc2626', icon: '', title: 'Не наша марка', subtitle: 'Утилизируйте товар', action: 'Утилизировать', voice: 'Марка не принадлежит компании', next: 'hide' },
   no_connection: { bg: '#f59e0b', icon: '📡', title: 'Нет связи', subtitle: 'Повторите попытку', action: 'Повторить', voice: 'Нет связи с сервером', next: 'reload' },
-  not_in_turnover: { bg: '#0284c7', icon: '', title: 'Код не введен в оборот', subtitle: 'Требуется заявка', action: 'В хелп', voice: 'Код не введен в оборот', next: 'add_pending' },
+  not_in_turnover: { bg: '#0284c7', icon: '📧', title: 'Код не введен в оборот', subtitle: 'Требуется заявка', action: 'В хелп', voice: 'Код не введен в оборот', next: 'add_pending' },
   ogv_blocked: { bg: '#7c3aed', icon: '⏳', title: 'Код заблокирован ОГВ', subtitle: 'Отложите товар', action: 'Отложить', voice: 'Код заблокирован ОГВ', next: 'add_pending' },
-  unknown: { bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе', action: 'ОК', voice: 'Марка не найдена', next: 'scan' }
+  unknown: { bg: '#6b7280', icon: '❓', title: 'Марка не найдена', subtitle: 'Код отсутствует в базе', action: 'ОК', voice: 'Марка не найдена', next: 'hide' }
 };
 
+// ============================================================
+// СОСТОЯНИЕ
+// ============================================================
 let pendingItems = JSON.parse(localStorage.getItem('pendingMarks') || '[]');
 let html5QrCode = null;
-let isScanning = false;
+let cameraRunning = false;
 let lastScannedCode = null;
 let lastScanTime = 0;
 const COOLDOWN_MS = 2500;
+
 let currentCode = '';
 let currentKm = '';
 let currentName = '';
@@ -544,61 +523,13 @@ let currentStatus = '';
 let currentPendingItem = null;
 let pushTimers = {};
 
+// ============================================================
+// УТИЛИТЫ
+// ============================================================
 function normalizeCode(code) {
   if (!code) return '';
   const t = code.trim();
   return t.length > 21 ? t.substring(0, 21) : t;
-}
-
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  if (id === 'screen-start') updatePendingList();
-}
-
-function updatePendingList() {
-  const list = document.getElementById('pending-list');
-  const count = document.getElementById('pending-count');
-  count.textContent = pendingItems.length;
-  if (pendingItems.length === 0) {
-    list.innerHTML = '<div class="pending-empty">Нет товаров, ожидающих решения</div>';
-    return;
-  }
-  list.innerHTML = '';
-  pendingItems.forEach(item => {
-    const div = document.createElement('div');
-    div.className = `pending-item ${item.step === 'notified' ? 'notified' : item.type}`;
-    let statusText = '';
-    if (item.type === 'help') {
-      statusText = item.step === 'notified' ? '✅ Заявка обработана' : '📧 Заявка в хелп';
-    } else {
-      statusText = item.step === 'notified' ? '✅ Статус изменён' : ' Заблокирован ОГВ';
-    }
-    const time = new Date(item.timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    div.innerHTML = `<div class="pending-status">${statusText}</div><div class="pending-product">${item.productName}</div><div class="pending-time">${time}</div>`;
-    list.appendChild(div);
-  });
-}
-
-function showDemoCodes() {
-  const list = document.getElementById('demo-list');
-  list.innerHTML = '';
-  const labels = { available: '🟢 Доступно', expired: '🔴 Просрочено', written_off: '🔴 Списано ранее', sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: '🟡 Нет связи', not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ' };
-  for (const mark of MARKS) {
-    const item = document.createElement('div');
-    item.className = 'demo-item';
-    item.innerHTML = `<div class="demo-status">${labels[mark.status]}</div><div class="demo-code" style="margin-bottom:4px">КМ: ${mark.km}</div><div style="font-size:11px;opacity:0.7">${mark.productName} · ${mark.stock}</div>`;
-    item.onclick = () => {
-      navigator.clipboard.writeText(mark.km).then(() => {
-        const el = item.querySelector('.demo-status');
-        const orig = el.textContent;
-        el.textContent = '✓ Скопирован';
-        setTimeout(() => el.textContent = orig, 1000);
-      });
-    };
-    list.appendChild(item);
-  }
-  showScreen('screen-demo');
 }
 
 function lookupStatus(code) {
@@ -633,72 +564,83 @@ function showToast(title, text) {
   toast.className = 'toast';
   toast.innerHTML = `<div style="font-weight:700;margin-bottom:4px">${title}</div><div style="font-size:14px;opacity:0.9">${text}</div>`;
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
 }
 
-// ИСПРАВЛЕНО: полный сброс с задержками
-async function resetScanner() {
-  console.log('resetScanner: начинаем сброс');
-  
-  // Сначала останавливаем сканирование
-  if (html5QrCode && isScanning) {
-    try {
-      console.log('Останавливаем сканер...');
-      await html5QrCode.stop();
-      console.log('Сканер остановлен');
-    } catch (e) {
-      console.error('Ошибка остановки:', e);
-    }
-  }
-  
-  // Ждем освобождения камеры
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Обнуляем ссылку
-  html5QrCode = null;
-  isScanning = false;
-  
-  // Очищаем контейнер
-  const reader = document.getElementById('reader');
-  if (reader) {
-    reader.innerHTML = '';
-    reader.innerHTML = `
-      <div class="scan-overlay">
-        <div class="scan-frame"></div>
-      </div>
-      <div class="scan-loader" id="scan-loader">
-        <div class="spinner"></div>
-        <span>Запуск камеры...</span>
-      </div>
-    `;
-  }
-  
-  console.log('resetScanner: сброс завершен');
+// ============================================================
+// УПРАВЛЕНИЕ ОВЕРЛЕЯМИ
+// ============================================================
+function hideAllOverlays() {
+  document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active'));
 }
 
-async function startScanner() {
-  console.log('startScanner: начинаем запуск');
+function showOverlayResult(config) {
+  const ov = document.getElementById('overlay-result');
+  ov.style.background = config.bg;
+  document.getElementById('ov-icon').textContent = config.icon;
+  document.getElementById('ov-title').textContent = config.title;
+  document.getElementById('ov-product').textContent = currentName;
+  document.getElementById('ov-stock').textContent = currentStock ? `Остаток: ${currentStock}` : '';
+  document.getElementById('ov-subtitle').textContent = config.subtitle;
+  document.getElementById('ov-code').textContent = currentCode;
+
+  const copyBtn = document.getElementById('btn-copy');
+  copyBtn.textContent = '📋 Скопировать код';
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(currentCode).then(() => {
+      copyBtn.textContent = '✓ Скопировано';
+      setTimeout(() => copyBtn.textContent = '📋 Скопировать код', 1500);
+    });
+  };
+
+  const btn = document.getElementById('btn-action');
+  btn.textContent = config.action;
+  btn.onclick = () => handleResultAction(config);
+
+  hideAllOverlays();
+  ov.classList.add('active');
+  speak(config.voice);
+}
+
+function showOverlayWriteoff() {
+  hideAllOverlays();
+  document.getElementById('overlay-writeoff').classList.add('active');
+}
+
+function showOverlayNotification(item) {
+  const body = document.getElementById('notification-body');
+  const msg = item.type === 'help' 
+    ? '✅ Заявка обработана. Отсканируйте марку — статус изменится на «Выставьте в торговый зал».' 
+    : '✅ Статус марки изменён. Отсканируйте марку — статус изменится на «Выставьте в торговый зал».';
+  body.innerHTML = `
+    <div class="notification-product">
+      <div class="notification-product-name">${item.productName}</div>
+      <div class="notification-product-status">${msg}</div>
+      <div style="font-size:12px;opacity:0.7;margin-top:8px">КМ: ${item.normalizedCode}</div>
+    </div>
+  `;
+  hideAllOverlays();
+  document.getElementById('overlay-notification').classList.add('active');
+  vibrate([200, 100, 200, 100, 300]);
+  speak('Уведомление. ' + item.productName);
+}
+
+// ============================================================
+// КАМЕРА — запускается ОДИН РАЗ и работает постоянно
+// ============================================================
+async function startCamera() {
+  if (cameraRunning) return;
   
-  if (isScanning) {
-    console.log('Уже сканируем, выходим');
-    return;
-  }
-  
-  showScreen('screen-scan');
-  
-  // Ждем рендеринга экрана
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
-  const loader = document.getElementById('scan-loader');
-  if (loader) {
-    loader.classList.remove('hidden');
-  }
+  document.getElementById('screen-start').classList.add('hidden');
+  document.getElementById('screen-scan').classList.add('active');
+  hideAllOverlays();
   
   try {
-    console.log('Создаем новый Html5Qrcode...');
     html5QrCode = new Html5Qrcode("reader", { verbose: false });
-    
-    console.log('Запускаем камеру...');
     await html5QrCode.start(
       { facingMode: "environment" },
       { 
@@ -714,43 +656,100 @@ async function startScanner() {
       onScanSuccess,
       () => {}
     );
-    
-    isScanning = true;
-    console.log('Камера запущена успешно');
-    
-    const loaderEl = document.getElementById('scan-loader');
-    if (loaderEl) {
-      loaderEl.classList.add('hidden');
-    }
+    cameraRunning = true;
+    console.log('Камера запущена');
   } catch (err) {
-    console.error('Ошибка запуска камеры:', err);
-    const loaderEl = document.getElementById('scan-loader');
-    if (loaderEl) {
-      loaderEl.innerHTML = `<div style="color:#f87171;text-align:center;padding:20px">Ошибка камеры<br><small>${err.message}</small></div>`;
-    }
+    console.error('Ошибка камеры:', err);
+    alert('Не удалось запустить камеру: ' + err.message);
   }
 }
 
-async function resetAndStart() {
-  console.log('resetAndStart: начинаем');
-  await resetScanner();
-  console.log('resetAndStart: ждем перед запуском');
-  await new Promise(resolve => setTimeout(resolve, 300));
-  console.log('resetAndStart: запускаем сканер');
-  await startScanner();
-}
-
-async function stopScanner() {
-  if (html5QrCode && isScanning) {
-    try { 
-      await html5QrCode.stop(); 
-    } catch (e) {
-      console.error('Ошибка остановки:', e);
-    }
+async function stopCamera() {
+  if (!cameraRunning || !html5QrCode) return;
+  try {
+    await html5QrCode.stop();
+    html5QrCode = null;
+    cameraRunning = false;
+    console.log('Камера остановлена');
+  } catch (e) {
+    console.error('Ошибка остановки:', e);
   }
-  isScanning = false;
 }
 
+// ============================================================
+// СКАНИРОВАНИЕ
+// ============================================================
+async function onScanSuccess(decodedText) {
+  const now = Date.now();
+  if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
+  lastScannedCode = decodedText;
+  lastScanTime = now;
+  
+  vibrate([80, 50, 80]);
+
+  const markData = lookupStatus(decodedText);
+  currentCode = decodedText;
+  currentKm = markData.km || normalizeCode(decodedText);
+  currentName = markData.productName || '';
+  currentStock = markData.stock || '';
+  currentStatus = markData.status;
+
+  const pendingItem = findPendingByCode(currentKm);
+
+  if (pendingItem) {
+    if (pendingItem.step === 'waiting') {
+      showOverlayResult({ 
+        bg: '#6b7280', icon: '⏳', title: 'Задание в работе', 
+        subtitle: 'Ждите уведомления', action: 'ОК', voice: 'Задание уже в работе', next: 'hide' 
+      });
+    } else if (pendingItem.step === 'notified') {
+      currentPendingItem = pendingItem;
+      showOverlayResult({ 
+        bg: '#16a34a', icon: '✅', title: 'Выставьте в торговый зал', 
+        subtitle: 'Товар готов к продаже', action: 'Выставлено', voice: 'Выставьте товар в зал', next: 'remove_pending' 
+      });
+    }
+  } else {
+    const config = STATUS_CONFIG[markData.status];
+    showOverlayResult(config);
+  }
+}
+
+// ============================================================
+// ДЕЙСТВИЯ ПОСЛЕ РЕЗУЛЬТАТА
+// ============================================================
+function handleResultAction(config) {
+  if (config.next === 'writeoff') {
+    showOverlayWriteoff();
+  } else if (config.next === 'add_pending') {
+    const type = currentStatus === 'ogv_blocked' ? 'ogv' : 'help';
+    const existing = findPendingByCode(currentKm);
+    if (!existing) {
+      pendingItems.push({ 
+        type, productName: currentName, code: currentCode, 
+        normalizedCode: currentKm, timestamp: Date.now(), step: 'waiting' 
+      });
+      localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
+      schedulePush(currentKm, 30000);
+    }
+    showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 30 сек');
+    hideAllOverlays(); // Просто скрываем оверлей — камера продолжает работать!
+  } else if (config.next === 'remove_pending') {
+    removePendingByCode(currentKm);
+    showToast('✅ Товар выставлен в зал', 'Задание выполнено');
+    speak('Товар выставлен в торговый зал');
+    currentPendingItem = null;
+    hideAllOverlays();
+  } else if (config.next === 'reload') {
+    window.location.reload();
+  } else if (config.next === 'hide') {
+    hideAllOverlays(); // Просто скрываем — камера работает
+  }
+}
+
+// ============================================================
+// PENDING
+// ============================================================
 function findPendingByCode(km) {
   return pendingItems.find(p => p.normalizedCode === km);
 }
@@ -768,107 +767,86 @@ function schedulePush(km, delayMs = 30000) {
     if (item && item.step === 'waiting') {
       item.step = 'notified';
       localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-      showPushNotification(item);
+      // Показываем пуш только если камера активна
+      if (cameraRunning) {
+        showOverlayNotification(item);
+      }
     }
     delete pushTimers[km];
   }, delayMs);
 }
 
-function showPushNotification(item) {
-  const body = document.getElementById('notification-body');
-  const msg = item.type === 'help' ? 'Заявка обработана. Отсканируйте марку.' : 'Статус изменён. Отсканируйте марку.';
-  body.innerHTML = `<div class="notification-product"><div class="notification-product-name">${item.productName}</div><div class="notification-product-status">${msg}</div><div style="font-size:12px;opacity:0.7;margin-top:8px">КМ: ${item.normalizedCode}</div></div>`;
-  showScreen('screen-notification');
-  vibrate([200, 100, 200, 100, 300]);
-  speak('Уведомление. ' + item.productName);
-}
-
-async function onScanSuccess(decodedText) {
-  console.log('onScanSuccess:', decodedText);
-  const now = Date.now();
-  if (decodedText === lastScannedCode && (now - lastScanTime) < COOLDOWN_MS) return;
-  lastScannedCode = decodedText;
-  lastScanTime = now;
-  vibrate([80, 50, 80]);
-  await stopScanner();
-
-  const markData = lookupStatus(decodedText);
-  currentCode = decodedText;
-  currentKm = markData.km || normalizeCode(decodedText);
-  currentName = markData.productName || '';
-  currentStock = markData.stock || '';
-  currentStatus = markData.status;
-
-  const pendingItem = findPendingByCode(currentKm);
-
-  if (pendingItem) {
-    if (pendingItem.step === 'waiting') {
-      showResult({ bg: '#6b7280', icon: '⏳', title: 'Задание в работе', subtitle: 'Ждите уведомления', action: 'ОК', voice: 'Задание уже в работе', next: 'scan' });
-    } else if (pendingItem.step === 'notified') {
-      currentPendingItem = pendingItem;
-      showResult({ bg: '#16a34a', icon: '✅', title: 'Выставьте в торговый зал', subtitle: 'Товар готов к продаже', action: 'Выставлено', voice: 'Выставьте товар в зал', next: 'remove_pending' });
-    }
-  } else {
-    const config = STATUS_CONFIG[markData.status];
-    showResult(config);
+// ============================================================
+// СПИСКИ
+// ============================================================
+function updatePendingList() {
+  const list = document.getElementById('pending-list');
+  const count = document.getElementById('pending-count');
+  count.textContent = pendingItems.length;
+  if (pendingItems.length === 0) {
+    list.innerHTML = '<div class="pending-empty">Нет товаров, ожидающих решения</div>';
+    return;
   }
+  list.innerHTML = '';
+  pendingItems.forEach(item => {
+    const div = document.createElement('div');
+    div.className = `pending-item ${item.step === 'notified' ? 'notified' : item.type}`;
+    let statusText = '';
+    if (item.type === 'help') {
+      statusText = item.step === 'notified' ? '✅ Заявка обработана' : '📧 Заявка в хелп';
+    } else {
+      statusText = item.step === 'notified' ? '✅ Статус изменён' : '⏳ Заблокирован ОГВ';
+    }
+    const time = new Date(item.timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    div.innerHTML = `<div class="pending-status">${statusText}</div><div class="pending-product">${item.productName}</div><div class="pending-time">${time}</div>`;
+    list.appendChild(div);
+  });
 }
 
-function showResult(config) {
-  document.getElementById('screen-result').style.background = config.bg;
-  document.getElementById('result-icon').textContent = config.icon;
-  document.getElementById('result-title').textContent = config.title;
-  document.getElementById('result-product').textContent = currentName;
-  document.getElementById('result-stock').textContent = currentStock ? `Остаток: ${currentStock}` : '';
-  document.getElementById('result-subtitle').textContent = config.subtitle;
-  document.getElementById('result-code').textContent = currentCode;
-  
-  const copyBtn = document.getElementById('btn-copy');
-  copyBtn.onclick = () => {
-    navigator.clipboard.writeText(currentCode).then(() => {
-      copyBtn.textContent = '✓ Скопировано';
-      setTimeout(() => copyBtn.textContent = ' Скопировать код', 1500);
-    });
+function showDemoCodes() {
+  const list = document.getElementById('demo-list');
+  list.innerHTML = '';
+  const labels = { 
+    available: '🟢 Доступно', expired: ' Просрочено', written_off: ' Списано ранее', 
+    sold: '🔴 Продано ранее', not_ours: '🔴 Не наша марка', no_connection: ' Нет связи', 
+    not_in_turnover: '🔵 Не введен в оборот', ogv_blocked: '🟣 Заблокирован ОГВ' 
   };
-
-  const btn = document.getElementById('btn-action');
-  btn.textContent = config.action;
-  btn.onclick = () => handleResultAction(config);
-
-  showScreen('screen-result');
-  speak(config.voice);
-}
-
-function handleResultAction(config) {
-  console.log('handleResultAction:', config.next);
-  if (config.next === 'writeoff') {
-    showScreen('screen-writeoff');
-  } else if (config.next === 'add_pending') {
-    const type = currentStatus === 'ogv_blocked' ? 'ogv' : 'help';
-    const existing = findPendingByCode(currentKm);
-    if (!existing) {
-      pendingItems.push({ type, productName: currentName, code: currentCode, normalizedCode: currentKm, timestamp: Date.now(), step: 'waiting' });
-      localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-      schedulePush(currentKm, 30000);
-    }
-    showToast(type === 'ogv' ? '⏳ Товар отложен' : '📧 Заявка создана', 'Пуш через 30 сек');
-    setTimeout(() => resetAndStart(), 500);
-  } else if (config.next === 'remove_pending') {
-    removePendingByCode(currentKm);
-    showToast('✅ Товар выставлен в зал', 'Задание выполнено');
-    currentPendingItem = null;
-    setTimeout(() => resetAndStart(), 500);
-  } else if (config.next === 'reload') {
-    window.location.reload();
-  } else if (config.next === 'scan') {
-    setTimeout(() => resetAndStart(), 500);
+  for (const mark of MARKS) {
+    const item = document.createElement('div');
+    item.className = 'demo-item';
+    item.innerHTML = `<div class="demo-status">${labels[mark.status]}</div><div class="demo-code" style="margin-bottom:4px">КМ: ${mark.km}</div><div style="font-size:11px;opacity:0.7">${mark.productName} · ${mark.stock}</div>`;
+    item.onclick = () => {
+      navigator.clipboard.writeText(mark.km).then(() => {
+        const el = item.querySelector('.demo-status');
+        const orig = el.textContent;
+        el.textContent = '✓ Скопирован';
+        setTimeout(() => el.textContent = orig, 1000);
+      });
+    };
+    list.appendChild(item);
   }
+  document.getElementById('screen-demo').classList.add('active');
 }
 
-document.getElementById('btn-scan-back').onclick = () => showScreen('screen-start');
-document.getElementById('btn-writeoff-confirm').onclick = () => { vibrate([100, 50, 100, 50, 200]); speak('Списание подтверждено'); setTimeout(() => resetAndStart(), 500); };
-document.getElementById('btn-writeoff-cancel').onclick = () => setTimeout(() => resetAndStart(), 500);
-document.getElementById('btn-notification-close').onclick = () => showScreen('screen-start');
+// ============================================================
+// ОБРАБОТЧИКИ КНОПОК
+// ============================================================
+document.getElementById('btn-scan-back').onclick = async () => {
+  hideAllOverlays();
+  await stopCamera();
+  document.getElementById('screen-scan').classList.remove('active');
+  document.getElementById('screen-start').classList.remove('hidden');
+  updatePendingList();
+};
+
+document.getElementById('btn-writeoff-confirm').onclick = () => { 
+  vibrate([100, 50, 100, 50, 200]); 
+  speak('Списание подтверждено'); 
+  showToast('✅ Списание подтверждено', '');
+  hideAllOverlays(); 
+};
+document.getElementById('btn-writeoff-cancel').onclick = () => hideAllOverlays();
+document.getElementById('btn-notification-close').onclick = () => hideAllOverlays();
 
 document.getElementById('btn-test-push').onclick = () => {
   const item = pendingItems.find(p => p.step === 'waiting');
@@ -876,7 +854,11 @@ document.getElementById('btn-test-push').onclick = () => {
     if (pushTimers[item.normalizedCode]) { clearTimeout(pushTimers[item.normalizedCode]); delete pushTimers[item.normalizedCode]; }
     item.step = 'notified';
     localStorage.setItem('pendingMarks', JSON.stringify(pendingItems));
-    showPushNotification(item);
+    if (cameraRunning) {
+      showOverlayNotification(item);
+    } else {
+      showToast('Пуш готов', 'Запустите камеру чтобы увидеть');
+    }
   } else {
     showToast('Нет ожидающих товаров', 'Отсканируйте марку ОГВ или хелп');
   }
@@ -889,11 +871,13 @@ document.getElementById('btn-start').onclick = () => {
     w.volume = 0;
     window.speechSynthesis.speak(w);
   }
-  startScanner();
+  startCamera();
 };
 
 document.getElementById('btn-demo').onclick = showDemoCodes;
-document.getElementById('btn-demo-back').onclick = () => showScreen('screen-start');
+document.getElementById('btn-demo-back').onclick = () => {
+  document.getElementById('screen-demo').classList.remove('active');
+};
 
 if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
